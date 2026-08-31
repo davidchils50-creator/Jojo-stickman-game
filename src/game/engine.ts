@@ -5478,77 +5478,76 @@ export class GameEngine {
       const arenaW = this.getArenaWidth();
       const arenaH = 540;
 
-      // Multi-point light speed displacement across the entire arena
-      let targetX: number;
-      let targetY: number;
+      // Only reposition, play sounds, spawn particles, and check damage every 3 frames to prevent browser/rendering lag!
+      if (f.actionTimer % 3 === 0) {
+        let targetX: number;
+        let targetY: number;
 
-      const hitStep = Math.floor(75 - f.actionTimer);
-      if (hitStep % 2 === 0 && opponent && opponent.hp > 0) {
-        // Dash around opponent from various surrounding angles
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 50 + Math.random() * 90;
-        targetX = Math.max(60, Math.min(arenaW - 100, opponent.x + Math.cos(angle) * dist));
-        targetY = Math.max(120, Math.min(arenaH - 140, opponent.y + Math.sin(angle) * dist));
-      } else {
-        // Flash to extreme arena bounds to create multi-point screen illusion
-        targetX = 60 + Math.random() * (arenaW - 120);
-        targetY = 100 + Math.random() * 280;
-      }
+        const hitStep = Math.floor((75 - f.actionTimer) / 3);
+        if (hitStep % 2 === 0 && opponent && opponent.hp > 0) {
+          // Dash around opponent from various surrounding angles
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 50 + Math.random() * 90;
+          targetX = Math.max(60, Math.min(arenaW - 100, opponent.x + Math.cos(angle) * dist));
+          targetY = Math.max(120, Math.min(arenaH - 140, opponent.y + Math.sin(angle) * dist));
+        } else {
+          // Flash to extreme arena bounds to create multi-point screen illusion
+          targetX = 60 + Math.random() * (arenaW - 120);
+          targetY = 100 + Math.random() * 280;
+        }
 
-      f.x = targetX;
-      f.y = targetY;
-      f.facing = f.x < origX ? 'left' : 'right';
+        f.x = targetX;
+        f.y = targetY;
+        f.facing = f.x < origX ? 'left' : 'right';
 
-      // Push multiple glowing afterimages to leave visual illusion of multiple copies across screen
-      if (!f.afterimages) f.afterimages = [];
-      f.afterimages.push({
-        x: origX,
-        y: origY,
-        alpha: 0.95,
-        facing: f.facing,
-        charId: 'dipez',
-        color: '#ffffff'
-      });
-      f.afterimages.push({
-        x: (origX + targetX) * 0.5,
-        y: (origY + targetY) * 0.5,
-        alpha: 0.82,
-        facing: f.facing,
-        charId: 'dipez',
-        color: '#fef08a'
-      });
-      f.afterimages.push({
-        x: origX + (Math.random() * 40 - 20),
-        y: origY + (Math.random() * 40 - 20),
-        alpha: 0.65,
-        facing: f.facing,
-        charId: 'dipez',
-        color: '#38bdf8'
-      });
+        // Push glowing afterimages (reduced from 3 to 2 for optimized stickman model drawing)
+        if (!f.afterimages) f.afterimages = [];
+        f.afterimages.push({
+          x: origX,
+          y: origY,
+          alpha: 0.85,
+          facing: f.facing,
+          charId: 'dipez',
+          color: '#ffffff'
+        });
+        f.afterimages.push({
+          x: (origX + targetX) * 0.5,
+          y: (origY + targetY) * 0.5,
+          alpha: 0.70,
+          facing: f.facing,
+          charId: 'dipez',
+          color: '#fef08a'
+        });
 
-      // Sound, Screen Shake & Particles
-      soundManager.playMiHBlitz();
-      this.screenShake = Math.max(this.screenShake, 10);
-      this.addShockwave((origX + targetX) * 0.5, (origY + targetY) * 0.5, '#fef08a');
-      this.addSpark(targetX + f.width / 2, targetY + f.height / 2, '#ffffff');
+        // Sound, Screen Shake & Particles
+        soundManager.playMiHBlitz();
+        this.screenShake = Math.max(this.screenShake, 8);
+        this.addShockwave((origX + targetX) * 0.5, (origY + targetY) * 0.5, '#fef08a');
+        this.addSpark(targetX + f.width / 2, targetY + f.height / 2, '#ffffff');
 
-      // Check damage & burn hits on targets hit along or near the light speed path
-      const targets = this.getTargetsForAttacker(f, opponent);
-      for (const t of targets) {
-        if (!t || t.hp <= 0 || t.id === f.id) continue;
-        
-        const distToTarget = Math.hypot((t.x + t.width / 2) - (targetX + f.width / 2), (t.y + t.height / 2) - (targetY + f.height / 2));
-        if (distToTarget < 190) {
-          const knockDir = targetX > origX ? 1 : -1;
-          this.applyRawDamage(t, 5, knockDir * 15, -6, f);
-          t.hitStun = 20;
-          t.action = 'hit';
+        // Check damage & burn hits on targets hit along or near the light speed path
+        const targets = this.getTargetsForAttacker(f, opponent);
+        for (const t of targets) {
+          if (!t || t.hp <= 0 || t.id === f.id) continue;
           
-          // Apply Burn Status (Damage Terbakar!)
-          t.burnedTimer = Math.max(t.burnedTimer || 0, 180); // 3s burning damage ticks
-          
-          this.addMenacingParticle(t.x + Math.random() * t.width, t.y + Math.random() * t.height, '🔥', '#f97316');
-          this.addTextParticle(t.x + t.width / 2, t.y - 35, '⚡ LIGHT BLITZ & BURN!', '#fef08a');
+          const distToTarget = Math.hypot((t.x + t.width / 2) - (targetX + f.width / 2), (t.y + t.height / 2) - (targetY + f.height / 2));
+          if (distToTarget < 190) {
+            const knockDir = targetX > origX ? 1 : -1;
+            // Balanced damage: 7 damage per hit over 25 potential hits (total possible damage: ~175, but usually ~80-120 since target is moving)
+            this.applyRawDamage(t, 7, knockDir * 12, -5, f);
+            t.hitStun = 15;
+            t.action = 'hit';
+            
+            // Apply Burn Status (Damage Terbakar!)
+            t.burnedTimer = Math.max(t.burnedTimer || 0, 120); // 2 seconds burning duration
+            
+            if (Math.random() < 0.3) {
+              this.addMenacingParticle(t.x + Math.random() * t.width, t.y + Math.random() * t.height, '🔥', '#f97316');
+            }
+            if (Math.random() < 0.15) {
+              this.addTextParticle(t.x + t.width / 2, t.y - 35, '⚡ LIGHT BLITZ!', '#fef08a');
+            }
+          }
         }
       }
     }
