@@ -1076,6 +1076,23 @@ export class GameEngine {
     f.hitStun = Math.max(0, f.hitStun - 1);
     f.guardBreakTimer = Math.max(0, f.guardBreakTimer - 1);
 
+    // DIPEZ PASSIVE MECHANICS (ALWAYS DECREMENTS EVERY FRAME)
+    if (f.charId === 'dipez') {
+      if (f.dipezArmLostTimer && f.dipezArmLostTimer > 0) {
+        f.dipezArmLostTimer--;
+      }
+      if (f.dipezInvisibleTimer && f.dipezInvisibleTimer > 0) {
+        f.dipezInvisibleTimer--;
+        if (this.frameCount % 5 === 0) {
+          this.addSpark(f.x + Math.random() * f.width, f.y + Math.random() * f.height, '#fef08a');
+        }
+      }
+      if (f.dipezStarMakerFlash && f.dipezStarMakerFlash > 0) {
+        f.dipezStarMakerFlash--;
+        this.screenShake = Math.max(this.screenShake, 14); // Continuous heavy screen shake during Star Maker!
+      }
+    }
+
     // Parallel Self Army (Clones update - ALWAYS runs even if main Valentine is stunned, hit, or knocked down)
     if (!f.isClone && f.valentineClones && f.valentineClones.length > 0) {
       for (let i = f.valentineClones.length - 1; i >= 0; i--) {
@@ -1814,19 +1831,6 @@ export class GameEngine {
 
     // DIPEZ MECHANICS & TIMERS
     if (f.charId === 'dipez') {
-      if (f.dipezArmLostTimer && f.dipezArmLostTimer > 0) {
-        f.dipezArmLostTimer--;
-      }
-      if (f.dipezInvisibleTimer && f.dipezInvisibleTimer > 0) {
-        f.dipezInvisibleTimer--;
-        if (this.frameCount % 5 === 0) {
-          this.addSpark(f.x + Math.random() * f.width, f.y + Math.random() * f.height, '#fef08a');
-        }
-      }
-      if (f.dipezStarMakerFlash && f.dipezStarMakerFlash > 0) {
-        f.dipezStarMakerFlash--;
-        this.screenShake = Math.max(this.screenShake, 14); // Continuous heavy screen shake during Star Maker!
-      }
 
       // Arm lost drawback when Arm Laser Cannon finishes in base form
       if (f.action === 'dipez_laser_cannon' && f.actionTimer === 1 && f.dipezForm !== 'pure_light') {
@@ -2921,6 +2925,9 @@ export class GameEngine {
 
     // 7. Movement & Jump (Responsive to C-Moon Dynamic Gravity Axis)
     let speedMult = f.isArmorOff ? ARMOR_OFF_SPEED_MULTIPLIER : 1.0;
+    if (f.charId === 'dipez' && f.dipezForm === 'pure_light') {
+      speedMult *= 2.8; // Evolved form runs at light speed!
+    }
     if (f.charId === 'pucci' && f.pucciForm === 'made_in_heaven') {
       speedMult *= (1.0 + (f.mihSpeedStack || 0));
     }
@@ -5464,7 +5471,7 @@ export class GameEngine {
   }
 
   private executeDipezLightSpeedBlitzFrame(f: Fighter, opponent: Fighter) {
-    if (f.actionTimer % 3 === 0 && f.actionTimer > 0) {
+    if (f.actionTimer > 0) {
       const origX = f.x;
       const origY = f.y;
 
@@ -5475,7 +5482,7 @@ export class GameEngine {
       let targetX: number;
       let targetY: number;
 
-      const hitStep = Math.floor((75 - f.actionTimer) / 3);
+      const hitStep = Math.floor(75 - f.actionTimer);
       if (hitStep % 2 === 0 && opponent && opponent.hp > 0) {
         // Dash around opponent from various surrounding angles
         const angle = Math.random() * Math.PI * 2;
@@ -5505,10 +5512,18 @@ export class GameEngine {
       f.afterimages.push({
         x: (origX + targetX) * 0.5,
         y: (origY + targetY) * 0.5,
-        alpha: 0.75,
+        alpha: 0.82,
         facing: f.facing,
         charId: 'dipez',
         color: '#fef08a'
+      });
+      f.afterimages.push({
+        x: origX + (Math.random() * 40 - 20),
+        y: origY + (Math.random() * 40 - 20),
+        alpha: 0.65,
+        facing: f.facing,
+        charId: 'dipez',
+        color: '#38bdf8'
       });
 
       // Sound, Screen Shake & Particles
@@ -5525,7 +5540,7 @@ export class GameEngine {
         const distToTarget = Math.hypot((t.x + t.width / 2) - (targetX + f.width / 2), (t.y + t.height / 2) - (targetY + f.height / 2));
         if (distToTarget < 190) {
           const knockDir = targetX > origX ? 1 : -1;
-          this.applyRawDamage(t, 16, knockDir * 15, -6, f);
+          this.applyRawDamage(t, 5, knockDir * 15, -6, f);
           t.hitStun = 20;
           t.action = 'hit';
           
@@ -7431,6 +7446,44 @@ export class GameEngine {
           }
         }
         continue; // Continues traveling across arena hitting all targets in its path!
+      }
+
+      // Special Dipez Laser Beams (Multi-Target Penetration, Continuous Beams)
+      if (p.type === 'dipez_laser_beam' || p.type === 'dipez_map_laser_beam') {
+        if (!p.hitTargetIds) {
+          p.hitTargetIds = [];
+        }
+        for (const t of possibleTargets) {
+          if (t.hp > 0 && !p.hitTargetIds.includes(t.id) && this.checkCollision(hitbox, t)) {
+            p.hitTargetIds.push(t.id);
+            if (t.charId === 'dipez' && t.dipezForm === 'pure_light') {
+              this.triggerDipezAutoBlink(t, attacker);
+              continue;
+            }
+            if (t.isTimeEraseActive || (t.charId === 'king_crimson' && t.isTimeEraseActive)) {
+              this.applyHit(attacker, t, hitbox);
+              this.addSpark(p.x + p.width / 2, p.y + p.height / 2, '#fb7185');
+              continue;
+            }
+            
+            // Apply laser impact visuals
+            this.screenShake = p.type === 'dipez_map_laser_beam' ? 24 : 12;
+            this.addShockwave(t.x + t.width / 2, t.y + t.height / 2, p.color || '#38bdf8');
+            this.addTextParticle(t.x + t.width / 2, t.y - 45, p.type === 'dipez_map_laser_beam' ? '💥 [MAP LASER IMPACT!]' : '💥 [LASER IMPACT!]', p.color || '#38bdf8');
+            
+            t.isGrounded = false;
+            t.hitStun = p.hitStun || 50;
+            t.action = 'knockback';
+            t.actionTimer = 40;
+            t.actionDuration = 40;
+            t.vx = (p.knockbackX !== undefined ? p.knockbackX : (attacker.facing === 'right' ? 18 : -18));
+            t.vy = p.knockbackY !== undefined ? p.knockbackY : -5;
+            t.invulnerableTimer = 0;
+            
+            this.applyHit(attacker, t, hitbox);
+          }
+        }
+        continue; // Keep the laser in play for its full life duration!
       }
 
       let target: Fighter | null = null;
