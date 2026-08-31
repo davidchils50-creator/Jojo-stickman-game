@@ -7414,6 +7414,10 @@ export class GameEngine {
 
       // Special Calamity Car Multi-Target Penetration Impact ("mental gak nembus, universal untuk lawan")
       if (p.type === 'calamity_car') {
+        if (p.life <= 0 || p.x < -100 || p.x > this.getArenaWidth() + 100) {
+          this.projectiles.splice(i, 1);
+          continue;
+        }
         if (!p.hitTargetIds) {
           p.hitTargetIds = [];
         }
@@ -7449,6 +7453,10 @@ export class GameEngine {
 
       // Special Dipez Laser Beams (Multi-Target Penetration, Continuous Beams)
       if (p.type === 'dipez_laser_beam' || p.type === 'dipez_map_laser_beam') {
+        if (p.life <= 0 || p.x < -100 || p.x > this.getArenaWidth() + 100) {
+          this.projectiles.splice(i, 1);
+          continue;
+        }
         if (!p.hitTargetIds) {
           p.hitTargetIds = [];
         }
