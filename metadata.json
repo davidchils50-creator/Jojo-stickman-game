@@ -1,0 +1,6 @@
+{
+  "name": "Jojo Game",
+  "description": "A fast-paced 2D JoJo-themed stickman fighting game featuring Jotaro, DIO, Josuke, Diavolo, Polnareff, Jonathan, Joseph, Tooru, Enrico Pucci, Funny Valentine (D4C, Love Train, Paradox Annihilation), and Dipez (Photon Atom Converter, Glowing Man, Pure Light Form).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

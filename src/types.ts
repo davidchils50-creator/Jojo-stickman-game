@@ -1,0 +1,524 @@
+export type FighterAction = 
+  | 'idle' 
+  | 'walk' 
+  | 'jump' 
+  | 'crouch'
+  | 'punch' 
+  | 'barrage' 
+  | 'pose' 
+  | 'hit' 
+  | 'stun'
+  | 'guard_break'
+  | 'knockback'
+  | 'knockdown'
+  | 'wakeup'
+  | 'dead'
+  | 'grabbed'
+  // Jotaro skills
+  | 'star_finger'
+  | 'star_vacuum'
+  | 'time_stop_startup'
+  | 'ora_beatdown'
+  | 'stand_leap'
+  | 'parry_stance'
+  | 'parry_counter'
+  // DIO skills
+  | 'knife_throw'
+  | 'drain_blood'
+  | 'vampire_drain'
+  | 'space_ripper_small'
+  | 'street_sign'
+  | 'space_ripper'
+  | 'teleport'
+  | 'road_roller_startup'
+  | 'road_roller_drop'
+  | 'road_roller_pummel'
+  | 'road_roller_explode'
+  // Jonathan skills (Hamon / Ripple Master)
+  | 'zoom_punch'
+  | 'sendo_wave'
+  | 'hamon_heal'
+  | 'hamon_counter'
+  | 'luck_pluck_slash'
+  | 'pluck_sword'
+  | 'sunlight_ultimate'
+  // Young Joseph skills (Battle Tendency / Hamon & Clackers)
+  | 'clacker_volley'
+  | 'next_line'
+  | 'next_line_counter'
+  | 'tsugi_ni_omae_wa'
+  | 'hamon_elbow'
+  | 'tommy_gun'
+  | 'clacker_boomerang'
+  | 'red_stone_beam'
+  | 'young_joseph_ultimate'
+  // Old Joseph skills (Stardust Crusaders / Hermit Purple & Hamon)
+  | 'hermit_purple_grapple'
+  | 'spirit_photo'
+  | 'polaroid_smash'
+  | 'hermit_trap'
+  | 'overdrive_tactics'
+  | 'hermit_overdrive_surge'
+  | 'camera_smash'
+  | 'old_joseph_ultimate'
+  // Diavolo skills (King Crimson & Epitaph)
+  | 'epitaph_stance'
+  | 'time_erase'
+  | 'donut_strike'
+  | 'time_erase_ambush'
+  | 'flesh_throw'
+  // Polnareff skills (Silver Chariot)
+  | 'ray_of_light'
+  | 'armor_off'
+  | 'shooting_sword'
+  | 'afterimage_mirage'
+  | 'upward_thrust'
+  // Josuke skills (Crazy Diamond)
+  | 'josuke_homing_shard'
+  | 'josuke_rock_trap'
+  | 'josuke_bearing_shot'
+  | 'josuke_dora_counter'
+  | 'josuke_rock_shield'
+  | 'josuke_ground_punch'
+  | 'homing_shard'
+  | 'rock_trap'
+  | 'bearing_shot'
+  | 'enraged_stagger'
+  | 'rock_shield'
+  | 'ground_punch'
+  // Tooru & Wonder of U skills (Part 8: JoJolion)
+  | 'tooru_chill_tap'
+  | 'tooru_calamity_curse'
+  | 'tooru_head_doctor'
+  | 'tooru_rock_insects'
+  | 'tooru_calamity_counter'
+  | 'tooru_calamity_rain'
+  | 'tooru_meteor_crash'
+  // Enrico Pucci skills & forms (Part 6: Stone Ocean)
+  // Form 1: Whitesnake
+  | 'pucci_pistol'
+  | 'pucci_pistol_shot'
+  | 'pucci_memory_disc'
+  | 'pucci_disc_extract'
+  | 'pucci_acid_melt'
+  | 'pucci_stand_disc'
+  | 'pucci_stand_disc_command'
+  | 'pucci_14_words_chant'
+  // Form 2: C-Moon
+  | 'cmoon_gravity_shift'
+  | 'cmoon_inversion_punch'
+  | 'cmoon_debris_launch'
+  | 'cmoon_gravity_shield'
+  | 'cmoon_evolve_mih'
+  // Form 3: Made in Heaven
+  | 'mih_speed_blitz'
+  | 'mih_time_acceleration'
+  | 'mih_knife_throw'
+  | 'mih_teleport_strike'
+  | 'mih_universe_reset'
+  // Josuke Higashikata (Gappy) skills (Part 8: JoJolion - Soft & Wet)
+  | 'gappy_bubble_plunder'
+  | 'gappy_shave_moisture'
+  | 'gappy_bubble_barrage'
+  | 'gappy_bubble_trap'
+  | 'gappy_go_beyond'
+  // Funny Valentine skills (Part 7: Steel Ball Run - D4C & Love Train)
+  | 'valentine_parallel_shift'
+  | 'valentine_flag_sandwich'
+  | 'valentine_paradox_pull'
+  | 'valentine_clone_summon'
+  | 'valentine_d4c_barrage'
+  | 'valentine_love_train'
+  | 'valentine_dimension_swap'
+  // Dipez skills (Photon Atom Converter & Pure Light Man)
+  | 'dipez_photon_bullet'
+  | 'dipez_flashbang'
+  | 'dipez_laser_cannon'
+  | 'dipez_light_speed_blitz'
+  | 'dipez_invisibility'
+  | 'dipez_map_laser'
+  | 'dipez_evolution_startup'
+  | 'dipez_star_maker';
+
+export type AuraColor = 'purple' | 'gold' | 'crimson' | 'cyan' | 'grey' | 'emerald' | 'silver' | 'amber' | 'lime' | 'calamity' | 'heaven' | 'dimensional';
+
+export type GameMode = 'arcade' | 'training' | 'survival' | 'team_boss' | 'team_survival';
+
+export type BossType = 'boss_dio' | 'boss_diavolo' | 'boss_tooru' | 'boss_pucci';
+
+export interface LobbyPlayer {
+  slotId: number; // 0 to 4
+  peerId?: string;
+  isHost: boolean;
+  name: string;
+  charId: string;
+  isReady: boolean;
+  team: 'teamA' | 'teamB';
+  isAI?: boolean;
+  isConnected: boolean;
+}
+
+export interface CharacterDef {
+  id: string;
+  name: string;
+  userName: string; // e.g. "Jotaro Kujo", "DIO", etc.
+  standName: string;
+  title: string;
+  bodyColor: string;
+  standColor: string;
+  auraColor: AuraColor;
+  eyeColor: string;
+  barrageCry: string;
+  specialMove: string;
+  timeStopDurationSec?: number; // Jotaro: 5s, DIO: 9s
+  stats: {
+    power: string;
+    speed: string;
+    range: string;
+    durability: string;
+  };
+  skillsList: {
+    id: string;
+    name: string;
+    command: string;
+    description: string;
+  }[];
+  description: string;
+}
+
+export interface MapDef {
+  id: string;
+  name: string;
+  location: string;
+  theme: string;
+  skyGradient: [string, string, string];
+  floorColors: [string, string, string];
+  lineColor: string;
+  accentColor: string;
+  landmarkType: 'bridge' | 'suburb' | 'colosseum' | 'dojo';
+  width?: number; // wide map support for survival
+}
+
+export interface MatchConfig {
+  playerChar: CharacterDef;
+  enemyChar: CharacterDef;
+  mode: GameMode;
+  map: MapDef;
+  bossType?: BossType;
+  teammateChar?: CharacterDef;
+  arenaWidth?: number;
+  lobbyPlayers?: LobbyPlayer[];
+  isMultiplayer?: boolean;
+  localSlot?: number;
+}
+
+export interface Hitbox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  damage: number;
+  knockbackX: number;
+  knockbackY: number;
+  hitStun?: number;
+  isBarrage?: boolean;
+  isGuardBreak?: boolean;
+  isUnblockable?: boolean;
+  hitSound?: string;
+}
+
+export interface Hurtbox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface Projectile {
+  id: number;
+  ownerId: string;
+  type: 'knife' | 'space_ripper' | 'space_ripper_beam' | 'road_roller' | 'sendo_wave' | 'clacker_volley' | 'tommy_bullet' | 'hermit_vine_grab' | 'blood_blind' | 'rapier_blade' | 'josuke_shard' | 'josuke_bearing' | 'rock_insect' | 'calamity_debris' | 'calamity_car' | 'calamity_raindrop' | 'calamity_meteor' | 'calamity_lightning' | 'pucci_bullet' | 'pucci_disc' | 'pucci_command_disc' | 'cmoon_debris' | 'mih_knife' | 'pucci_acid_pool' | 'gappy_plunder_bubble' | 'gappy_shave_bubble' | 'gappy_barrage_bubble' | 'gappy_trap_bubble' | 'gappy_go_beyond' | 'love_train_beam' | 'valentine_flag_whip' | 'dipez_photon_bullet' | 'dipez_laser_beam' | 'dipez_star_maker_beam' | 'dipez_map_laser_beam';
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  baseVx: number;
+  baseVy: number;
+  width: number;
+  height: number;
+  damage: number;
+  knockbackX: number;
+  knockbackY: number;
+  hitStun?: number;
+  isFrozenInTime: boolean;
+  life: number;
+  maxLife: number;
+  rotation?: number;
+  color?: string;
+  subType?: 'billboard' | 'pot' | 'pole' | 'plane_door' | 'car' | 'sedan' | 'suv' | 'pickup' | 'van' | 'truck' | 'semi' | 'insect' | 'raindrop' | 'meteor' | 'vampire_beam' | 'bullet' | 'disc' | 'debris' | 'mih_knife' | 'acid_pool' | 'flag' | 'love_train';
+  hitTargetIds?: string[];
+  isParallelWorld?: boolean;
+}
+
+export interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  size: number;
+  color: string;
+  type: 'spark' | 'fist' | 'barrage_arm' | 'menacing' | 'aura' | 'text' | 'shockwave' | 'knife' | 'laser' | 'steam' | 'disc' | 'feather' | 'clock_gear' | 'gravity_wave' | 'flag_sheet' | 'paradox_cube' | 'love_train_pillar' | 'dimensional_rift' | 'dipez_photon_spark' | 'dipez_star_maker_flash';
+  text?: string;
+  
+  // Rich Barrage Arm & Line Properties
+  originX?: number;
+  originY?: number;
+  targetX?: number;
+  targetY?: number;
+  armLength?: number;
+  angle?: number;
+  armColor?: string;
+  glowColor?: string;
+  isRapier?: boolean;
+}
+
+export interface TimeStopState {
+  isActive: boolean;
+  initiator: string | null;
+  // Accumulated damage and knockback waiting to detonate when time resumes
+  accumulatedDamagePlayer: number;
+  accumulatedDamageAI: number;
+  accumulatedDamageTeammate: number;
+  accumulatedKnockbackXPlayer: number;
+  accumulatedKnockbackYPlayer: number;
+  accumulatedKnockbackXAI: number;
+  accumulatedKnockbackYAI: number;
+  accumulatedKnockbackXTeammate: number;
+  accumulatedKnockbackYTeammate: number;
+  filterFlash: number;
+}
+
+export interface FighterSkillCooldowns {
+  punch: number;
+  barrage: number;
+  standToggle: number;
+  pose: number;
+  skill1: number; // Jotaro: Star Finger | DIO: Knife Throw
+  skill2: number; // Jotaro: Star Vacuum | DIO: Drain Blood
+  skill3: number; // Jotaro: Stand Leap | DIO: Street Sign
+  skill4: number; // Jotaro: Parry Counter | DIO: Space Ripper
+  skill5: number; // Jotaro: Ora Beatdown | DIO: Teleport
+  timeStop: number; // Time Stop
+  ultimate: number; // DIO: Road Roller Da!
+}
+
+export interface Fighter {
+  id: string; // 'player', 'ai', 'p1'..'p5', 'boss', 'survival_enemy_...'
+  slotId?: number;
+  team: 'teamA' | 'teamB';
+  name: string;
+  userName: string; // "Jotaro Kujo" / "DIO"
+  standName: string;
+  charId: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  width: number;
+  height: number;
+  isGrounded: boolean;
+  wasGroundedLastFrame?: boolean;
+  facing: 'left' | 'right';
+  
+  // Stats
+  hp: number;
+  maxHp: number;
+  energy: number;
+  maxEnergy: number;
+
+  // Boss & Team & Survival attributes
+  isBoss?: boolean;
+  bossType?: BossType;
+  scale?: number;
+  isAI?: boolean;
+  isDead?: boolean;
+  respawnTimer?: number; // countdown in frames before respawning
+  respawnCount?: number;
+  kills?: number;
+  
+  // Stand mechanics
+  hasStand: boolean;
+  isStandActive: boolean;
+  standAlpha: number;
+  standOffset: { x: number; y: number };
+  barrageCry: string;
+  
+  // Actions & State Machine
+  action: FighterAction;
+  actionTimer: number;
+  actionDuration: number;
+  cooldowns: FighterSkillCooldowns;
+  
+  // Time Stop Mechanics
+  canMoveInStoppedTime: boolean;
+  timeStopDurationMax: number; // In frames (e.g. Jotaro: 300 frames = 5s, DIO: 540 frames = 9s)
+  timeStopActiveTimer: number; // Countdown while this specific fighter is keeping time stopped or moving
+  isFrozenByTimeStop: boolean;
+  
+  // Hit & Guard mechanics
+  isInvulnerable: boolean;
+  invulnerableTimer: number;
+  hitStun: number;
+  guardBreakTimer: number;
+  isParrying: boolean;
+  comboCount: number;
+  comboResetTimer: number;
+
+  // Grabbed target link
+  grabbedTarget?: string | null;
+
+  // Jonathan Sword Mode Toggle
+  isSwordEquipped?: boolean;
+
+  // Diavolo Mechanics (King Crimson & Epitaph)
+  isEpitaphActive?: boolean;
+  epitaphTimer?: number;
+  isTimeEraseActive?: boolean;
+  timeEraseTimer?: number;
+  blindedTimer?: number;
+
+  // Polnareff Mechanics (Silver Chariot)
+  isArmorOff?: boolean;
+  isShootingSwordCooldown?: number;
+  afterimages?: Array<{ x: number; y: number; alpha: number; facing: 'left' | 'right'; charId: string; color: string }>;
+
+  // Josuke Mechanics (Crazy Diamond)
+  isEnraged?: boolean;
+  enragedTimer?: number;
+  angeloWallTimer?: number;
+  rockShieldTimer?: number;
+  rockShieldX?: number;
+  homingShardX?: number;
+  homingShardY?: number;
+  homingShardState?: 'out' | 'restoring' | 'idle';
+  homingShardActive?: boolean;
+
+  // Tooru & Wonder of U Mechanics (Logic of Calamity & Head Doctor)
+  isPursuing?: boolean;
+  pursuingTimer?: number;
+  wouEntity?: {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    facing: 'left' | 'right';
+    walkTimer: number;
+    active: boolean;
+    state: 'idle' | 'walk' | 'stalk' | 'fade';
+    targetX: number;
+    attackCooldown?: number;
+  };
+  isHeadDoctorDisguise?: boolean;
+  headDoctorTimer?: number;
+  isCalamityCounterActive?: boolean;
+  calamityCounterTimer?: number;
+  calamityRainTimer?: number;
+  calamityCooldownTimer?: number;
+  calamityCarConvoyTimer?: number;
+  burnedTimer?: number;
+  bleedTimer?: number;
+
+  // Enrico Pucci Mechanics (Whitesnake, C-Moon, Made in Heaven)
+  pucciForm?: 'whitesnake' | 'cmoon' | 'made_in_heaven';
+  pucciChantStep?: number; // 0 to 14
+  pucciChantProgress?: number;
+  pucciChantTimer?: number;
+  pucciChantInterrupted?: boolean;
+  silencedTimer?: number; // Disc Steal silence (disables skills for 2s)
+  cmoonGauge?: number; // 0 to 100 (Cape Canaveral Bar)
+  cmoonEvolutionGauge?: number;
+  cmoonGravityAngle?: string;
+  isCmoonShieldActive?: boolean;
+  isMihTimeAccelerated?: boolean;
+  gravityAxis?: 'down' | 'right' | 'up' | 'left'; // Dynamic Gravity Axis Shift
+  gravityShiftTimer?: number;
+  gravitySlamArmed?: boolean; // Armed for gravity impact damage on landing
+  cmoonShieldTimer?: number;
+  mihSpeedStack?: number; // Velocity acceleration stack (0 to 150%)
+  mihTimeAccelTimer?: number; // 4s Extreme time acceleration
+  mihBlitzHitsRemaining?: number;
+  mihBlitzTargetId?: string;
+  discFrozenTimer?: number; // Freeze command
+  universeResetTimer?: number;
+  universeResetFlash?: number;
+  acidPools?: Array<{ id: number; x: number; y: number; width: number; height: number; life: number; maxLife: number }>;
+
+  // Josuke Higashikata (Gappy) Mechanics (Soft & Wet, Plunder & Go Beyond)
+  gappyFrictionTheftTimer?: number; // Slip / zero floor friction duration on enemy
+  gappySightTheftTimer?: number;    // Sight theft blackout duration on enemy
+  gappySoundTheftTimer?: number;    // Sound theft mute duration on enemy
+  gappyAttackTheftTimer?: number;   // 50% Attack reduction duration on enemy
+  gappyShieldActive?: boolean;      // Bubble shield active state
+  gappyShieldTimer?: number;        // Bubble shield timer
+  gappyTrappedTimer?: number;       // Suspension bubble trap timer on enemy
+  gappyFrictionStrips?: Array<{ id: number; x: number; y: number; width: number; timer: number }>; // Floor plunder traps
+  gappyGoBeyondActive?: boolean;    // Active Go Beyond ultimate sequence
+  gappyGoBeyondTimer?: number;
+  gappyGoBeyondX?: number;
+  gappyGoBeyondY?: number;
+  gappyGoBeyondPhase?: 'cast' | 'launch' | 'explode';
+
+  // Funny Valentine Mechanics (D4C, Parallel World, Clones, Paradox, Love Train)
+  isClone?: boolean; // True if this fighter is a dimensional clone
+  isParallelWorld?: boolean; // Currently in the Parallel World
+  parallelWorldTimer?: number;
+  parallelEnemyClone?: Fighter | null; // Active CPU AI enemy in the Parallel World
+  valentineClones?: Fighter[]; // Active Valentine clones from Skill 2
+  cloneLifeTimer?: number; // Dedicated timer for clone lifetime
+  isLoveTrainActive?: boolean; // Love Train Holy Light Wall
+  loveTrainTimer?: number;
+  isParadoxColliding?: boolean;
+  paradoxPullArmed?: boolean;
+  paradoxCollisionTimer?: number;
+  flagSandwichActive?: boolean;
+  flagSandwichTimer?: number;
+  isLifeInsuranceReviving?: boolean;
+  lifeInsuranceTimer?: number;
+
+  // Dipez Mechanics (Photon Atom Converter, Glowing Man, Pure Light Form & Star Maker)
+  dipezForm?: 'base' | 'pure_light';
+  dipezArmLostTimer?: number; // 5 seconds (300 frames) drawback after Skill 3 where arms are missing
+  dipezInvisibleTimer?: number; // Evolved Skill 1: Photon Invisibility timer (360 frames / 6s)
+  dipezStarMakerActive?: boolean;
+  dipezStarMakerTimer?: number;
+  dipezStarMakerFlash?: number; // 3 seconds (180 frames) super white arena flash
+
+  // Customization
+  color: string;
+  standColor: string;
+  auraColor: AuraColor;
+  eyeColor: string;
+}
+
+export interface InputState {
+  left: boolean;
+  right: boolean;
+  jump: boolean;
+  crouch: boolean;
+  punch: boolean;
+  barrage: boolean;
+  toggleStand: boolean;
+  pose: boolean;
+  
+  // Dedicated Skill Triggers
+  skill1: boolean; // Jotaro: Star Finger / DIO: Knife Throw
+  skill2: boolean; // Jotaro: Star Vacuum / DIO: Drain Blood
+  skill3: boolean; // Jotaro: Stand Leap / DIO: Street Sign
+  skill4: boolean; // Jotaro: Parry Counter / DIO: Space Ripper
+  skill5: boolean; // Jotaro: Ora Beatdown / DIO: Teleport
+  timeStop: boolean; // Time Stop activation / counter-time-stop
+  ultimate: boolean; // DIO: Road Roller
+}
