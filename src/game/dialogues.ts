@@ -3887,6 +3887,16 @@ function getCharDialogueMeta(charId: string) {
         quote2: '抜かせるわけねえだろ。テメェはオレの土煙でも吸ってな！ WRAAAA!!',
         trans2: '"You think I\'ll let you pass? Choke on my dust! WRAAAA!!"'
       };
+    case 'perstein':
+      return {
+        speakerName: 'Perstein',
+        standName: 'Wable the Metal Cutter',
+        japaneseTitle: 'ウォーリー・ウェイブル (Perstein)',
+        quote1: '嵐の後の静けさ……この70mのチェーンでお前の息の根を止めてやる。',
+        trans1: '"Silence after the storm... with this 70m drive chain, I will sever your life."',
+        quote2: '幾千の摩擦と切断を経て、最後に残るのはただの沈黙だ。',
+        trans2: '"Through thousands of friction cuts, all that remains at the end is pure silence."'
+      };
     default:
       return {
         speakerName: charId.toUpperCase(),
