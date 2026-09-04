@@ -143,76 +143,92 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
   const isGappy = player.charId === 'gappy';
   const isValentine = player.charId === 'funny_valentine';
   const isDipez = player.charId === 'dipez';
+  const isArabianFat = player.charId === 'arabian_fat';
+  const isMichael = player.charId === 'michael';
+  const isPerstein = player.charId === 'perstein';
+  const isHiding = isArabianFat && !!player.isHidingBehindMirror;
   const pucciForm = player.pucciForm || 'whitesnake';
-  const hasStand = !isJonathan && !isYoungJoseph && !isTooru && player.charId !== 'stickman';
+  const hasStand = !isJonathan && !isYoungJoseph && !isTooru && !isArabianFat && !isMichael && player.charId !== 'stickman';
 
   return (
-    <div className="w-full shrink-0 select-none z-30 px-2 sm:px-4 py-1.5 max-w-6xl mx-auto flex items-center justify-between gap-1 sm:gap-4 touch-none bg-slate-950/90 backdrop-blur-md border-t border-purple-950/70 shadow-[0_-5px_25px_rgba(0,0,0,0.8)] min-h-[115px] sm:min-h-[130px]">
+    <div className="w-full shrink-0 select-none z-30 px-1.5 sm:px-4 py-1 sm:py-1.5 max-w-6xl mx-auto flex items-center justify-between gap-1 sm:gap-4 touch-none bg-slate-950/90 backdrop-blur-md border-t border-purple-950/70 shadow-[0_-5px_25px_rgba(0,0,0,0.8)] min-h-[90px] sm:min-h-[125px]">
       
-      {/* 1. LEFT ARCADE CLUSTER: 360-DEGREE VIRTUAL TOUCH ANALOG JOYSTICK */}
-      <div 
-        className="relative w-28 h-28 sm:w-34 sm:h-34 shrink-0 flex items-center justify-center touch-none select-none"
-        onTouchStart={(e) => {
-          e.preventDefault();
-          setIsDraggingJoystick(true);
-          const rect = e.currentTarget.getBoundingClientRect();
-          handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY, rect);
-        }}
-        onTouchMove={(e) => {
-          e.preventDefault();
-          if (isDraggingJoystick) {
+      {/* 1. LEFT ARCADE CLUSTER: 360-DEGREE VIRTUAL TOUCH ANALOG JOYSTICK (DISABLED/HIDDEN WHILE HIDING) */}
+      {isHiding ? (
+        <div className="relative w-22 h-22 sm:w-32 sm:h-32 shrink-0 flex flex-col items-center justify-center p-1.5 rounded-xl bg-amber-950/60 border-2 border-amber-500/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.9),0_0_15px_rgba(245,158,11,0.3)] text-center animate-pulse">
+          <Sun className="w-5 h-5 text-amber-400 mb-0.5 animate-spin" style={{ animationDuration: '6s' }} />
+          <span className="text-[7.5px] sm:text-[9px] font-black uppercase text-amber-300 tracking-tighter leading-tight">
+            🪞 MIRROR CAMOUFLAGE
+          </span>
+          <span className="text-[6.5px] text-amber-200/70 mt-0.5 font-medium leading-none">
+            No Analog (Skills Only)
+          </span>
+        </div>
+      ) : (
+        <div 
+          className="relative w-22 h-22 sm:w-32 sm:h-32 shrink-0 flex items-center justify-center touch-none select-none"
+          onTouchStart={(e) => {
+            e.preventDefault();
+            setIsDraggingJoystick(true);
             const rect = e.currentTarget.getBoundingClientRect();
             handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY, rect);
-          }
-        }}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          resetJoystick();
-        }}
-        onTouchCancel={(e) => {
-          e.preventDefault();
-          resetJoystick();
-        }}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setIsDraggingJoystick(true);
-          const rect = e.currentTarget.getBoundingClientRect();
-          handleJoystickMove(e.clientX, e.clientY, rect);
-        }}
-        onMouseMove={(e) => {
-          if (isDraggingJoystick) {
+          }}
+          onTouchMove={(e) => {
             e.preventDefault();
+            if (isDraggingJoystick) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              handleJoystickMove(e.touches[0].clientX, e.touches[0].clientY, rect);
+            }
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            resetJoystick();
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            resetJoystick();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsDraggingJoystick(true);
             const rect = e.currentTarget.getBoundingClientRect();
             handleJoystickMove(e.clientX, e.clientY, rect);
-          }
-        }}
-        onMouseUp={resetJoystick}
-        onMouseLeave={resetJoystick}
-      >
-        {/* Outer Circular Ring */}
-        <div className="absolute inset-0 rounded-full bg-slate-900/90 border-2 border-yellow-500/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.9),0_0_15px_rgba(234,179,8,0.2)] flex items-center justify-center pointer-events-none">
-          {/* Compass direction subtle indicators */}
-          <ArrowUp className="absolute top-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
-          <ArrowDown className="absolute bottom-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
-          <ArrowLeft className="absolute left-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
-          <ArrowRight className="absolute right-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
-          
-          {/* Inner ring track */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-dashed border-slate-700/60" />
-        </div>
-
-        {/* Dynamic Analog Knob/Stick */}
-        <div 
-          className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 border-2 border-yellow-200 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center transition-transform duration-75 pointer-events-none z-10"
-          style={{
-            transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`,
           }}
+          onMouseMove={(e) => {
+            if (isDraggingJoystick) {
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              handleJoystickMove(e.clientX, e.clientY, rect);
+            }
+          }}
+          onMouseUp={resetJoystick}
+          onMouseLeave={resetJoystick}
         >
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-950/40 border border-yellow-200/50 shadow-inner flex items-center justify-center">
-            <div className="w-2 h-2 rounded-full bg-yellow-100 shadow-[0_0_6px_#fef08a]" />
+          {/* Outer Circular Ring */}
+          <div className="absolute inset-0 rounded-full bg-slate-900/90 border-2 border-yellow-500/60 shadow-[inset_0_2px_12px_rgba(0,0,0,0.9),0_0_15px_rgba(234,179,8,0.2)] flex items-center justify-center pointer-events-none">
+            {/* Compass direction subtle indicators */}
+            <ArrowUp className="absolute top-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
+            <ArrowDown className="absolute bottom-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
+            <ArrowLeft className="absolute left-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
+            <ArrowRight className="absolute right-1 w-3.5 h-3.5 text-slate-500 opacity-60" />
+            
+            {/* Inner ring track */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-dashed border-slate-700/60" />
+          </div>
+
+          {/* Dynamic Analog Knob/Stick */}
+          <div 
+            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 border-2 border-yellow-200 shadow-[0_4px_12px_rgba(0,0,0,0.6),inset_0_2px_4px_rgba(255,255,255,0.4)] flex items-center justify-center transition-transform duration-75 pointer-events-none z-10"
+            style={{
+              transform: `translate(${joystickOffset.x}px, ${joystickOffset.y}px)`,
+            }}
+          >
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-slate-950/40 border border-yellow-200/50 shadow-inner flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-yellow-100 shadow-[0_0_6px_#fef08a]" />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 2. CENTER CLUSTER: SPECIAL ABILITIES, STAND & TIME STOP */}
       <div className="flex flex-col items-center justify-center gap-1 flex-1 max-w-sm sm:max-w-md px-1 py-0.5">
@@ -230,29 +246,39 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
             <span className="text-[7px] font-black uppercase text-indigo-200 leading-tight">B:POSE</span>
           </button>
 
-          {/* Stand Summon Circle (L) OR Jonathan Change Sword (L) */}
-          {(hasStand || isJonathan) && (
+          {/* Stand Summon Circle (L) OR Jonathan Change Sword (L) OR Michael Mount George (L) */}
+          {(hasStand || isJonathan || isMichael) && (
             <button
               {...bindButton('toggleStand')}
               className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 flex flex-col items-center justify-center shadow-md active:scale-90 transition-transform cursor-pointer shrink-0 ${
-                isJonathan
-                  ? player.isSwordEquipped
-                    ? 'bg-amber-900 border-amber-300 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.7)] animate-pulse'
-                    : 'bg-slate-900 border-amber-600/70 text-amber-400'
-                  : player.isStandActive
-                    ? 'bg-purple-900 border-purple-300 text-purple-100 shadow-[0_0_12px_rgba(168,85,247,0.5)]'
-                    : 'bg-slate-900 border-slate-700 text-slate-400'
+                isMichael
+                  ? player.isGeorgeMounted
+                    ? 'bg-emerald-950 border-yellow-300 text-yellow-200 shadow-[0_0_14px_rgba(250,204,21,0.8)] animate-pulse'
+                    : 'bg-slate-900 border-amber-500/80 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                  : isJonathan
+                    ? player.isSwordEquipped
+                      ? 'bg-amber-900 border-amber-300 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.7)] animate-pulse'
+                      : 'bg-slate-900 border-amber-600/70 text-amber-400'
+                    : player.isStandActive
+                      ? 'bg-purple-900 border-purple-300 text-purple-100 shadow-[0_0_12px_rgba(168,85,247,0.5)]'
+                      : 'bg-slate-900 border-slate-700 text-slate-400'
               }`}
-              title={isJonathan ? "CHANGE (Equip/Unequip Luck & Pluck Sword) (L)" : "Stand On/Off (L)"}
+              title={
+                isMichael
+                  ? player.isGeorgeMounted ? "SKILL CHANGE: DISMOUNT GEORGE (L)" : "SKILL CHANGE: MOUNT GEORGE (L)"
+                  : isJonathan ? "CHANGE (Equip/Unequip Luck & Pluck Sword) (L)" : "Stand On/Off (L)"
+              }
               style={getButtonStyle('toggleStand')}
             >
-              {isJonathan ? (
+              {isMichael ? (
+                <Zap className={`w-3.5 h-3.5 ${player.isGeorgeMounted ? 'text-yellow-300 fill-yellow-300' : 'text-amber-400'}`} />
+              ) : isJonathan ? (
                 <Swords className={`w-3.5 h-3.5 ${player.isSwordEquipped ? 'text-yellow-300 fill-yellow-300' : 'text-amber-400'}`} />
               ) : (
                 <Zap className={`w-3.5 h-3.5 ${player.isStandActive ? 'text-yellow-300 fill-yellow-300' : 'text-slate-400'}`} />
               )}
               <span className="text-[7px] font-black uppercase leading-tight">
-                {isJonathan ? 'L:CHANGE' : 'L:STAND'}
+                {isMichael ? (player.isGeorgeMounted ? 'L:RIDING' : 'L:MOUNT') : isJonathan ? 'L:CHANGE' : 'L:STAND'}
               </span>
             </button>
           )}
@@ -1370,6 +1396,263 @@ export const TouchControls: React.FC<TouchControlsProps> = ({
               >
                 <Sparkles className="w-3 h-3 text-white" />
                 <span className="text-[6px] font-black uppercase">{player.dipezForm === 'pure_light' ? 'P:MAKER' : 'P:EVOLVE'}</span>
+              </button>
+            </>
+          )}
+
+          {/* ARABIAN FAT & THE SUN SKILLS */}
+          {isArabianFat && (
+            <>
+              {/* Skill 1 (U): Focused Heat Ray Snipe */}
+              <button
+                {...bindButton('skill1')}
+                disabled={player.cooldowns.skill1 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill1 <= 0 ? 'bg-amber-950 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Focused Heat Ray Snipe (U)"
+                style={getButtonStyle('skill1')}
+              >
+                <Crosshair className="w-3 h-3 text-amber-400" />
+                <span className="text-[6px] font-black uppercase">U:SNIPE</span>
+              </button>
+
+              {/* Skill 2 (I): Desert Mirage Illusion */}
+              <button
+                {...bindButton('skill2')}
+                disabled={player.cooldowns.skill2 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill2 <= 0 ? 'bg-orange-950 border-orange-400 text-orange-200 shadow-[0_0_10px_rgba(249,115,22,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Desert Mirage Illusion - Invert Controls (I)"
+                style={getButtonStyle('skill2')}
+              >
+                <Eye className="w-3 h-3 text-orange-400" />
+                <span className="text-[6px] font-black uppercase">I:MIRAGE</span>
+              </button>
+
+              {/* Skill 3 (O): Prominence Solar Bombardment */}
+              <button
+                {...bindButton('skill3')}
+                disabled={player.cooldowns.skill3 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill3 <= 0 ? 'bg-red-950 border-red-400 text-red-200 shadow-[0_0_12px_rgba(239,68,68,0.7)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Prominence Solar Bombardment (5 Solar Bombs) (O)"
+                style={getButtonStyle('skill3')}
+              >
+                <Flame className="w-3 h-3 text-red-400" />
+                <span className="text-[6px] font-black uppercase">O:BOMBS</span>
+              </button>
+
+              {/* Skill 4 / Ultimate (P/Y): Supernova Heatwave */}
+              <button
+                {...bindButton('ultimate')}
+                disabled={player.cooldowns.ultimate > 0 || (player.energy < 75 && !player.isHidingBehindMirror)}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.ultimate <= 0
+                    ? 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 border-amber-300 text-slate-950 shadow-[0_0_15px_rgba(245,158,11,0.9)] animate-pulse'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Supernova Heatwave (+35°C Global Burst) (Y/P)"
+                style={getButtonStyle('ultimate')}
+              >
+                <Sun className="w-3 h-3 text-amber-100 animate-spin" style={{ animationDuration: '4s' }} />
+                <span className="text-[6px] font-black uppercase">Y:NOVA</span>
+              </button>
+            </>
+          )}
+
+          {/* MICHAEL JUNISTER & GHOST: HAT PRICE SKILLS */}
+          {isMichael && (
+            <>
+              {/* Skill 1 (U): Golden Palm Thrust */}
+              <button
+                {...bindButton('skill1')}
+                disabled={player.cooldowns.skill1 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill1 <= 0 ? 'bg-amber-950 border-yellow-400 text-yellow-200 shadow-[0_0_10px_rgba(250,204,21,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Golden Palm Thrust (Guard Break) (U)"
+                style={getButtonStyle('skill1')}
+              >
+                <Zap className="w-3 h-3 text-yellow-300" />
+                <span className="text-[6px] font-black uppercase">U:PALM</span>
+              </button>
+
+              {/* Skill 2 (I): Flash Step Counter */}
+              <button
+                {...bindButton('skill2')}
+                disabled={player.cooldowns.skill2 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.michaelCounterActive
+                    ? 'bg-amber-500 border-white text-slate-950 shadow-[0_0_15px_rgba(250,204,21,0.9)] animate-pulse'
+                    : player.cooldowns.skill2 <= 0
+                    ? 'bg-yellow-950 border-amber-400 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.6)]'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Flash Step Counter (I)"
+                style={getButtonStyle('skill2')}
+              >
+                <ShieldAlert className="w-3 h-3 text-amber-300" />
+                <span className="text-[6px] font-black uppercase">I:CNTR</span>
+              </button>
+
+              {/* Skill 3 (O): Golden Axe Kick */}
+              <button
+                {...bindButton('skill3')}
+                disabled={player.cooldowns.skill3 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill3 <= 0 ? 'bg-amber-900 border-yellow-300 text-yellow-100 shadow-[0_0_10px_rgba(250,204,21,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Golden Axe Kick (Seismic Slam Pop-Up) (O)"
+                style={getButtonStyle('skill3')}
+              >
+                <Target className="w-3 h-3 text-yellow-400" />
+                <span className="text-[6px] font-black uppercase">O:AXE</span>
+              </button>
+
+              {/* Skill 4 (P): Hat Price Overdrive */}
+              <button
+                {...bindButton('skill4')}
+                disabled={player.cooldowns.skill4 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  (player.michaelOverdriveTimer || 0) > 0
+                    ? 'bg-yellow-400 border-yellow-200 text-slate-950 shadow-[0_0_15px_rgba(250,204,21,0.9)] animate-pulse'
+                    : player.cooldowns.skill4 <= 0
+                    ? 'bg-amber-950 border-yellow-400 text-yellow-200 shadow-[0_0_10px_rgba(250,204,21,0.6)]'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Hat Price Overdrive (Golden Limbs Surge) (P)"
+                style={getButtonStyle('skill4')}
+              >
+                <Flame className="w-3 h-3 text-yellow-400" />
+                <span className="text-[6px] font-black uppercase">P:SURGE</span>
+              </button>
+
+              {/* Skill 5 (L): Kinetic Rush: Gold Gale */}
+              <button
+                {...bindButton('skill5')}
+                disabled={player.cooldowns.skill5 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill5 <= 0 ? 'bg-amber-950 border-amber-300 text-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Kinetic Rush: Gold Gale (L)"
+                style={getButtonStyle('skill5')}
+              >
+                <Wind className="w-3 h-3 text-amber-300" />
+                <span className="text-[6px] font-black uppercase">L:GALE</span>
+              </button>
+
+              {/* Ultimate (Y): HAT PRICE: MAXIMUM PRICE */}
+              <button
+                {...bindButton('ultimate')}
+                disabled={player.cooldowns.ultimate > 0 || player.energy < 75}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.ultimate <= 0 && player.energy >= 75
+                    ? 'bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 border-yellow-200 text-slate-950 shadow-[0_0_16px_rgba(250,204,21,0.9)] animate-pulse'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="HAT PRICE: MAXIMUM PRICE (Y)"
+                style={getButtonStyle('ultimate')}
+              >
+                <Sparkles className="w-3 h-3 text-yellow-200" />
+                <span className="text-[6px] font-black uppercase">Y:MAX</span>
+              </button>
+            </>
+          )}
+
+          {/* WALLY WABLE / PERSTEIN (WABLE THE METAL CUTTER: 70m DRIVE CHAIN SKILLS) */}
+          {isPerstein && (
+            <>
+              {/* Skill 1 (U): 70m Drive Chain Snare (Long Range Hook & Pull) */}
+              <button
+                {...bindButton('skill1')}
+                disabled={player.cooldowns.skill1 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill1 <= 0 ? 'bg-sky-950 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.7)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="70m Drive Chain Snare (Long Range Screen Span Hook & Reel) (U)"
+                style={getButtonStyle('skill1')}
+              >
+                <Crosshair className="w-3 h-3 text-sky-300" />
+                <span className="text-[6px] font-black uppercase">U:SNARE</span>
+              </button>
+
+              {/* Skill 2 (I): High-RPM Drive Chain Shred */}
+              <button
+                {...bindButton('skill2')}
+                disabled={player.cooldowns.skill2 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill2 <= 0 ? 'bg-slate-900 border-slate-300 text-slate-100 shadow-[0_0_10px_rgba(203,213,225,0.6)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="High-RPM Drive Chain Shred (Multi-Hit Chain Binding) (I)"
+                style={getButtonStyle('skill2')}
+              >
+                <Zap className="w-3 h-3 text-cyan-300" />
+                <span className="text-[6px] font-black uppercase">I:SHRED</span>
+              </button>
+
+              {/* Skill 3 (O): Metal Friction Spark Blast */}
+              <button
+                {...bindButton('skill3')}
+                disabled={player.cooldowns.skill3 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill3 <= 0 ? 'bg-amber-950 border-yellow-400 text-yellow-200 shadow-[0_0_12px_rgba(250,204,21,0.7)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Metal Friction Spark Blast (Screen-Wide Hot Shrapnel Wave) (O)"
+                style={getButtonStyle('skill3')}
+              >
+                <Sun className="w-3 h-3 text-yellow-300" />
+                <span className="text-[6px] font-black uppercase">O:SPARK</span>
+              </button>
+
+              {/* Skill 4 (P): Absolute Chain Deflection (Awaken 2) */}
+              <button
+                {...bindButton('skill4')}
+                disabled={player.cooldowns.skill4 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  (player.persteinDeflectionTimer || 0) > 0
+                    ? 'bg-sky-400 border-white text-slate-950 shadow-[0_0_16px_rgba(56,189,248,1)] animate-pulse'
+                    : player.cooldowns.skill4 <= 0
+                    ? 'bg-cyan-950 border-cyan-400 text-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.6)]'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Absolute Chain Deflection (Reflects Attacks & Projectiles) (Awaken 2) (P)"
+                style={getButtonStyle('skill4')}
+              >
+                <ShieldAlert className="w-3 h-3 text-cyan-300" />
+                <span className="text-[6px] font-black uppercase">P:DFLCT</span>
+              </button>
+
+              {/* Skill 5 (H): Direct Touch Flesh Tear (Awaken 1) */}
+              <button
+                {...bindButton('skill5')}
+                disabled={player.cooldowns.skill5 > 0}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.skill5 <= 0 ? 'bg-red-950 border-red-500 text-red-200 shadow-[0_0_14px_rgba(239,68,68,0.8)]' : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Direct Touch Flesh Tear (Armor-Ignoring True Damage) (Awaken 1) (H)"
+                style={getButtonStyle('skill5')}
+              >
+                <Swords className="w-3 h-3 text-red-400" />
+                <span className="text-[6px] font-black uppercase">H:TEAR</span>
+              </button>
+
+              {/* Ultimate (Y): Silence After The Storm: 70m Vortex Guillotine */}
+              <button
+                {...bindButton('ultimate')}
+                disabled={player.cooldowns.ultimate > 0 || player.energy < 75}
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full border flex flex-col items-center justify-center active:scale-90 transition-transform cursor-pointer ${
+                  player.cooldowns.ultimate <= 0 && player.energy >= 75
+                    ? 'bg-gradient-to-br from-sky-400 via-blue-600 to-slate-900 border-sky-300 text-white shadow-[0_0_18px_rgba(56,189,248,0.9)] animate-pulse'
+                    : 'bg-slate-950 border-slate-800 text-slate-600'
+                }`}
+                title="Silence After The Storm: 70m Vortex Guillotine (Y)"
+                style={getButtonStyle('ultimate')}
+              >
+                <Sparkles className="w-3 h-3 text-sky-200" />
+                <span className="text-[6px] font-black uppercase">Y:SILENCE</span>
               </button>
             </>
           )}

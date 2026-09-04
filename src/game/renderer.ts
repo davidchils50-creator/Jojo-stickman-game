@@ -35,6 +35,7 @@ export class GameRenderer {
   private ctx: CanvasRenderingContext2D;
   private currentMap: MapDef = MAPS[0];
   public activeGravityAxis: string = 'down';
+  public acidPools: any[] = [];
   public localPlayerId: 'player' | 'ai' | null = null;
   public isMultiplayer: boolean = false;
   private cameraX: number = 0;
@@ -89,10 +90,14 @@ export class GameRenderer {
     map?: MapDef,
     arenaWidth?: number,
     teammate?: Fighter | null,
-    vampires?: Fighter[]
+    vampires?: Fighter[],
+    acidPools?: Array<{ id: number; ownerId: string | number; x: number; y: number; width: number; height: number; damagePerTick: number; duration: number; color: string }>
   ) {
     if (map) {
       this.currentMap = map;
+    }
+    if (acidPools) {
+      this.acidPools = acidPools;
     }
     const ctx = this.ctx;
     const VIEWPORT_WIDTH = 960;
@@ -100,8 +105,57 @@ export class GameRenderer {
 
     const currentArenaWidth = arenaWidth || 960;
     this.currentArenaWidth = currentArenaWidth;
-    const playerCenterX = player.x + player.width / 2;
-    const targetCameraX = Math.max(0, Math.min(currentArenaWidth - VIEWPORT_WIDTH, playerCenterX - VIEWPORT_WIDTH / 2));
+
+    // Smart Camera Tracking: Find primary local player or active fighter
+    let primaryFighter: Fighter = player;
+    if (this.localPlayerId === 'ai' && ai && ai.hp > 0) {
+      primaryFighter = ai;
+    } else if (player && player.hp > 0) {
+      primaryFighter = player;
+    } else if (teammate && teammate.hp > 0) {
+      primaryFighter = teammate;
+    } else if (ai && ai.hp > 0) {
+      primaryFighter = ai;
+    }
+
+    // Find main active opponent from opposing team
+    let targetOpponent: Fighter | null = null;
+    const primaryTeam = primaryFighter.team || 'teamA';
+    const potentialOpponents: Fighter[] = [];
+    if (primaryTeam === 'teamA') {
+      if (ai && ai.hp > 0) potentialOpponents.push(ai);
+      if (vampires && vampires.length > 0) {
+        for (const v of vampires) {
+          if (v && v.hp > 0) potentialOpponents.push(v);
+        }
+      }
+    } else {
+      if (player && player.hp > 0) potentialOpponents.push(player);
+      if (teammate && teammate.hp > 0) potentialOpponents.push(teammate);
+    }
+
+    if (potentialOpponents.length > 0) {
+      const primaryCenterX = primaryFighter.x + primaryFighter.width / 2;
+      let minDist = Infinity;
+      for (const opp of potentialOpponents) {
+        const oppCenterX = opp.x + opp.width / 2;
+        const dist = Math.abs(oppCenterX - primaryCenterX);
+        if (dist < minDist) {
+          minDist = dist;
+          targetOpponent = opp;
+        }
+      }
+    }
+
+    let focusX = primaryFighter.x + primaryFighter.width / 2;
+    if (targetOpponent) {
+      const oppX = targetOpponent.x + targetOpponent.width / 2;
+      const midX = (focusX + oppX) / 2;
+      // Clamp midpoint to keep primary fighter within comfortable view bounds (max 380px offset)
+      focusX = Math.max(focusX - 380, Math.min(focusX + 380, midX));
+    }
+
+    const targetCameraX = Math.max(0, Math.min(currentArenaWidth - VIEWPORT_WIDTH, focusX - VIEWPORT_WIDTH / 2));
 
     if (Math.abs(this.cameraX - targetCameraX) > 0.1) {
       this.cameraX += (targetCameraX - this.cameraX) * 0.12;
@@ -243,6 +297,17 @@ export class GameRenderer {
       this.drawWonderOfUEntity(teammate.wouEntity, gameTime, timeStopState?.isActive);
     }
 
+    // 2.5. Draw Enrico Pucci Acid Pools (Whitesnake Digestive Sludge)
+    const activePools = acidPools || this.acidPools || [];
+    if (activePools.length > 0) {
+      this.drawAcidPools(activePools, gameTime);
+    }
+
+    // 2.6. Draw C-Moon Directional Gravity Compass & Vector Flow Indicators
+    if (this.activeGravityAxis && this.activeGravityAxis !== 'down') {
+      this.drawGravityDirectionalOverlay(this.activeGravityAxis, gameTime, currentArenaWidth);
+    }
+
     // FUNNY VALENTINE MECHANICS: Clones, Parallel Enemy & Love Train Light Wall
     const mainFighters = [player, ai];
     if (teammate) mainFighters.push(teammate);
@@ -261,6 +326,16 @@ export class GameRenderer {
         const inViewerDimension = isLocalInParallel ? !!f.parallelEnemyClone.isParallelWorld : !f.parallelEnemyClone.isParallelWorld;
         if (inViewerDimension) {
           this.drawFighterWithStand(f.parallelEnemyClone, f, gameTime, timeStopState, isLocalInParallel);
+        }
+      }
+
+      // ARABIAN FAT & THE SUN STAND RENDERING
+      if (f.charId === 'arabian_fat') {
+        if (f.sunActive || (f.sunTemperature && f.sunTemperature > 0)) {
+          this.drawTheSunStand(f, gameTime);
+        }
+        if (f.mirrorObject) {
+          this.drawMirrorObject(f, gameTime);
         }
       }
     }
@@ -316,6 +391,13 @@ export class GameRenderer {
       this.drawCalamityRainOverlay(gameTime);
     } else if (player.isParallelWorld || ai.isParallelWorld) {
       this.drawParallelWorldOverlay(gameTime, isLocalInParallel);
+    }
+
+    // Perstein (Wally Wable) Silence After The Storm: 70m Heavy-Duty Drive Chain Execution Overlay
+    const persteinFighter = [player, ai, teammate, ...(vampires || [])].find(f => f && f.charId === 'perstein' && f.action === 'perstein_ultimate');
+    if (persteinFighter) {
+      const allActive = [player, ai, teammate, ...(vampires || [])].filter(Boolean) as Fighter[];
+      this.drawPersteinUltimateOverlay(persteinFighter, allActive, gameTime);
     }
 
     // Player Sight Theft Blindness Overlay
@@ -1774,8 +1856,11 @@ export class GameRenderer {
       } else if (fighter.charId === 'joseph_old') {
         // Old Joseph - Render Hermit Purple Thorny Vines & Hamon Lightning (No Humanoid Stand)
         this.drawHermitPurpleStand(fighter, time);
-      } else if (fighter.charId === 'tooru' || fighter.charId === 'stickman' || fighter.charId === 'vampire' || !fighter.hasStand) {
-        // No floating humanoid spirit model for Tooru, Stickman, Vampires, or non-Stand users
+      } else if (fighter.charId === 'michael') {
+        // Michael Junister - Ghost: Hat Price (Golden Kinetic Phantom Manifestation)
+        this.drawHatPriceGhostManifestation(fighter, time);
+      } else if (fighter.charId === 'tooru' || fighter.charId === 'stickman' || fighter.charId === 'vampire' || fighter.charId === 'arabian_fat' || !fighter.hasStand) {
+        // No floating humanoid spirit model for Tooru, Stickman, Vampires, Arabian Fat, or non-Stand users
       } else {
         // Humanoid Stand Users (Jotaro, DIO, Josuke, Diavolo, Polnareff, Pucci)
         const floatY = isFrozen ? 0 : (isMihFloating ? Math.sin(time * 0.18 + 0.8) * 8 : Math.sin(time * 0.08) * 8);
@@ -1935,6 +2020,71 @@ export class GameRenderer {
       ctx.fillRect(fighter.x - 5, fighter.y - 5, fighter.width + 10, fighter.height + 10);
     }
 
+    // 2.7. Pucci Whitesnake Acid Melting Corrosion Effect Overlay on Fighter
+    if (fighter.acidMeltTimer && fighter.acidMeltTimer > 0) {
+      ctx.save();
+      const meltAlpha = Math.min(1, fighter.acidMeltTimer / 30);
+      ctx.globalAlpha = meltAlpha * 0.75;
+      ctx.fillStyle = 'rgba(192, 132, 252, 0.4)';
+      ctx.strokeStyle = '#c084fc';
+      ctx.lineWidth = 2;
+
+      // Dripping caustic acid aura on fighter
+      const fx = fighter.x;
+      const fy = fighter.y + mihFloatOffsetY;
+      const fw = fighter.width;
+      const fh = fighter.height;
+
+      // Caustic dissolving slime drops along limbs
+      for (let d = 0; d < 5; d++) {
+        const dropPhase = (time * 0.15 + d * 1.2) % 1.0;
+        const dropX = fx + 8 + (d * (fw - 16)) / 4;
+        const dropY = fy + dropPhase * fh;
+        ctx.fillStyle = '#e9d5ff';
+        ctx.beginPath();
+        ctx.arc(dropX, dropY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Toxic dissolving smoke wisps
+      for (let w = 0; w < 3; w++) {
+        const wPhase = (time * 0.1 + w * 0.35) % 1.0;
+        const wx = fx + fw / 2 + Math.sin(time * 0.2 + w) * 16;
+        const wy = fy + fh * 0.4 - wPhase * 28;
+        ctx.fillStyle = `rgba(168, 85, 247, ${(1 - wPhase) * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(wx, wy, 3 + wPhase * 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 2.8. C-Moon Inversion Distortion Effect Overlay on Fighter
+    if (fighter.inversionDistortTimer && fighter.inversionDistortTimer > 0) {
+      ctx.save();
+      const invertAlpha = Math.min(1, fighter.inversionDistortTimer / 25);
+      const fx = fighter.x + fighter.width / 2;
+      const fy = fighter.y + fighter.height / 2 + mihFloatOffsetY;
+
+      // Twisting Emerald Gravitational Rings
+      ctx.strokeStyle = '#34d399';
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = 12;
+      ctx.lineWidth = 2.5 * invertAlpha;
+
+      const ringCount = 3;
+      for (let r = 0; r < ringCount; r++) {
+        const ringProgress = (time * 0.15 + r * 0.33) % 1.0;
+        const ringRadius = 12 + ringProgress * 32;
+        const rAlpha = (1 - ringProgress) * invertAlpha;
+        ctx.globalAlpha = rAlpha;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, ringRadius, ringRadius * 0.6, (time * 0.2 + r) * Math.PI, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     ctx.restore();
 
     // 3. Draw Skill Overlay Effects (Star Finger, Street Sign, Parry, Blood Drain)
@@ -2034,6 +2184,56 @@ export class GameRenderer {
       ctx.beginPath();
       ctx.arc(fighter.x + fighter.width / 2 + 15, fighter.y + fighter.height / 2 - 22, 10, Math.PI * 0.2, Math.PI * 0.7);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    // Perstein Heavy-Duty Motorcycle Drive Chain Snare & Binding Overlay on target
+    if (fighter.persteinChainBindTimer && fighter.persteinChainBindTimer > 0) {
+      ctx.save();
+      const fcx = fighter.x + fighter.width / 2;
+      const fcy = fighter.y + fighter.height / 2;
+
+      // 4 Coils of Heavy Motorcycle Roller Chains bound around victim's torso, waist, and limbs
+      for (let layer = 0; layer < 4; layer++) {
+        const yOffset = -20 + layer * 12;
+        const radiusX = (fighter.width * 0.52) + Math.sin(time * 0.35 + layer) * 2;
+        const radiusY = 7;
+
+        // Outer Plate Base
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.ellipse(fcx, fcy + yOffset, radiusX, radiusY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Steel Drive Chain Link Outline
+        ctx.strokeStyle = layer % 2 === 0 ? '#38bdf8' : '#cbd5e1';
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.ellipse(fcx, fcy + yOffset, radiusX, radiusY, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Hardened Roller Pins along circumference
+        for (let p = 0; p < 6; p++) {
+          const pAngle = (p * Math.PI) / 3 + (time * 0.12 * (layer % 2 === 0 ? 1 : -1));
+          const px = fcx + Math.cos(pAngle) * radiusX;
+          const py = fcy + yOffset + Math.sin(pAngle) * radiusY;
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(px, py, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Chain Clamp / Lock Clasp in Center
+      ctx.fillStyle = '#38bdf8';
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(fcx, fcy - 6, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
       ctx.restore();
     }
 
@@ -2466,6 +2666,160 @@ export class GameRenderer {
     ctx.lineTo(rx + 15 * dir, ry - 8);
     ctx.lineTo(rx + 22 * dir, ry + 4);
     ctx.stroke();
+  }
+
+  private drawHatPriceGhostManifestation(fighter: Fighter, time: number) {
+    const ctx = this.ctx;
+    const dir = fighter.facing === 'right' ? 1 : -1;
+    const cx = fighter.x + fighter.width / 2;
+    const cy = fighter.y + fighter.height / 2;
+    const isOverdrive = (fighter.michaelOverdriveTimer || 0) > 0;
+    const isUltimate = fighter.action === 'michael_ultimate';
+    const isBarrage = fighter.action === 'michael_kinetic_barrage';
+
+    // 1. Ghost Hat Price Float Position (Hovering behind and above Michael)
+    const floatY = Math.sin(time * 0.1) * 6;
+    const ghostX = cx - dir * 30 + (fighter.standOffset?.x || 0);
+    const ghostY = cy - 26 + floatY + (fighter.standOffset?.y || 0);
+
+    // 2. Radiant Golden Kinetic Core Aura
+    const pulse = Math.sin(time * 0.25) * 8;
+    const auraRadius = (isOverdrive || isUltimate ? 80 : 55) + pulse;
+    const auraGrad = ctx.createRadialGradient(ghostX, ghostY, 6, ghostX, ghostY, auraRadius);
+    auraGrad.addColorStop(0, isOverdrive ? 'rgba(255, 255, 255, 0.85)' : 'rgba(254, 240, 138, 0.75)');
+    auraGrad.addColorStop(0.3, isOverdrive ? 'rgba(250, 204, 21, 0.7)' : 'rgba(234, 179, 8, 0.55)');
+    auraGrad.addColorStop(0.7, 'rgba(202, 138, 4, 0.25)');
+    auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(ghostX, ghostY, auraRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3. Expanding Concentric Kinetic Shock Rings
+    for (let r = 1; r <= (isOverdrive ? 3 : 2); r++) {
+      const ringRadius = ((time * 28 + r * 30) % 75);
+      const ringAlpha = Math.max(0, 1 - ringRadius / 75) * (isOverdrive ? 0.7 : 0.45);
+      ctx.strokeStyle = `rgba(250, 204, 21, ${ringAlpha})`;
+      ctx.lineWidth = isOverdrive ? 2.5 : 1.5;
+      ctx.beginPath();
+      ctx.arc(ghostX, ghostY, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 4. Ghost Torso Silhouette (Ethereal Golden Phantom)
+    ctx.fillStyle = isOverdrive ? 'rgba(254, 240, 138, 0.55)' : 'rgba(250, 204, 21, 0.45)';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+
+    // Phantom Shoulders and Chest
+    ctx.beginPath();
+    ctx.moveTo(ghostX - dir * 18, ghostY + 22);
+    ctx.lineTo(ghostX - dir * 14, ghostY - 2);
+    ctx.lineTo(ghostX + dir * 14, ghostY - 2);
+    ctx.lineTo(ghostX + dir * 18, ghostY + 22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Phantom Head
+    const headRadius = 11;
+    const headX = ghostX;
+    const headY = ghostY - 14;
+    ctx.beginPath();
+    ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 5. GHOST HAT PRICE HEAD CREST (NO HAT - Ethereal Kinetic Energy Spikes & Phantom Flame Horns)
+    ctx.fillStyle = isOverdrive ? '#fef08a' : '#facc15';
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(headX - dir * 8, headY - 4);
+    ctx.lineTo(headX - dir * 14, headY - 18);
+    ctx.lineTo(headX - dir * 5, headY - 11);
+    ctx.lineTo(headX, headY - 24); // Center sharp kinetic spire
+    ctx.lineTo(headX + dir * 6, headY - 12);
+    ctx.lineTo(headX + dir * 15, headY - 19);
+    ctx.lineTo(headX + dir * 9, headY - 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Internal radiant kinetic core highlight
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(headX - dir * 2, headY - 8);
+    ctx.lineTo(headX, headY - 20);
+    ctx.lineTo(headX + dir * 2, headY - 8);
+    ctx.closePath();
+    ctx.fill();
+
+    // 6. Blazing Golden Phantom Eyes
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#facc15';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(headX + dir * 4, headY - 1, 2.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.arc(headX + dir * 4, headY - 1, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 7. Ghost Arms & Striking Phantom Limbs
+    const armAlpha = isBarrage || isUltimate ? 0.75 : 0.4;
+    ctx.strokeStyle = `rgba(250, 204, 21, ${armAlpha})`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+
+    // Lead Arm
+    const armExtension = isBarrage ? Math.sin(time * 0.9) * 20 : (isUltimate ? 30 : 10);
+    ctx.beginPath();
+    ctx.moveTo(ghostX + dir * 14, ghostY + 2);
+    ctx.lineTo(ghostX + dir * (26 + armExtension), ghostY + 6);
+    ctx.stroke();
+
+    // Trailing Arm
+    ctx.beginPath();
+    ctx.moveTo(ghostX - dir * 14, ghostY + 2);
+    ctx.lineTo(ghostX - dir * 20, ghostY + 16);
+    ctx.stroke();
+
+    // Extra Phantom Flurry Arms during Barrage
+    if (isBarrage) {
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i++) {
+        const flurryDir = Math.sin(time * 0.8 + i * 2);
+        const fx = ghostX + dir * (20 + (i + 1) * 12);
+        const fy = ghostY + flurryDir * 16;
+        ctx.beginPath();
+        ctx.moveTo(ghostX + dir * 10, ghostY + flurryDir * 6);
+        ctx.lineTo(fx, fy);
+        ctx.stroke();
+        // Golden fist spark
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(fx, fy, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 8. Crackling Kinetic Lightning Arcs
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < (isOverdrive ? 6 : 3); i++) {
+      const angle = (time * 0.3 + i * (Math.PI / 2)) % (Math.PI * 2);
+      const r = 24 + Math.sin(time * 0.6 + i) * 12;
+      const sx = ghostX + Math.cos(angle) * r;
+      const sy = ghostY + Math.sin(angle) * r;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + (Math.sin(time + i) * 12), sy + (Math.cos(time + i) * 12));
+      ctx.stroke();
+    }
   }
 
   private drawSkillVisuals(fighter: Fighter, opponent: Fighter, time: number) {
@@ -3663,6 +4017,304 @@ export class GameRenderer {
 
       ctx.restore();
     }
+
+    // =========================================================================
+    // ★ MICHAEL JUNISTER (GHOST: HAT PRICE - GOLDEN KINETIC MARTIAL ARTS) ★
+    // =========================================================================
+
+    // 1. Golden Palm Thrust - Forward Kinetic Pressure Cone & Shockwave
+    if (fighter.action === 'michael_palm_thrust') {
+      ctx.save();
+      const palmX = fighter.x + (dir === 1 ? fighter.width + 12 : -12);
+      const palmY = fighter.y + fighter.height * 0.45;
+
+      // Golden Kinetic Compression Wavefronts
+      for (let w = 1; w <= 3; w++) {
+        const dist = w * 32;
+        const waveX = palmX + dir * dist;
+        const h = 24 + w * 16;
+        ctx.strokeStyle = `rgba(250, 204, 21, ${0.85 - w * 0.2})`;
+        ctx.lineWidth = 4 - w * 0.8;
+        ctx.beginPath();
+        ctx.arc(waveX, palmY, h, -Math.PI * 0.35 * dir, Math.PI * 0.35 * dir, dir === -1);
+        ctx.stroke();
+      }
+
+      // High-Velocity Forward Golden Blast Core
+      const thrustGrad = ctx.createRadialGradient(palmX, palmY, 4, palmX + dir * 60, palmY, 70);
+      thrustGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      thrustGrad.addColorStop(0.3, 'rgba(254, 240, 138, 0.85)');
+      thrustGrad.addColorStop(0.6, 'rgba(250, 204, 21, 0.5)');
+      thrustGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+      ctx.fillStyle = thrustGrad;
+      ctx.beginPath();
+      ctx.moveTo(palmX, palmY - 14);
+      ctx.lineTo(palmX + dir * 130, palmY - 32);
+      ctx.lineTo(palmX + dir * 150, palmY);
+      ctx.lineTo(palmX + dir * 130, palmY + 32);
+      ctx.lineTo(palmX, palmY + 14);
+      ctx.closePath();
+      ctx.fill();
+
+      // Golden kinetic particles
+      ctx.fillStyle = '#fef08a';
+      for (let p = 0; p < 8; p++) {
+        const px = palmX + dir * (20 + Math.random() * 110);
+        const py = palmY + (Math.random() - 0.5) * 44;
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + Math.random() * 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 2. Flash Step Counter Stance - Golden Hexagonal Kinetic Parry Barrier
+    if (fighter.action === 'michael_counter_stance' || fighter.michaelCounterActive) {
+      ctx.save();
+      const barrierX = fighter.x + fighter.width / 2 + dir * 26;
+      const barrierY = fighter.y + fighter.height / 2;
+      const barrierPulse = Math.sin(time * 0.3) * 4;
+
+      // Hexagonal Kinetic Barrier
+      const radius = 38 + barrierPulse;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.5;
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.18)';
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3 + time * 0.05;
+        const hx = barrierX + Math.cos(angle) * radius;
+        const hy = barrierY + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Inner Concentric Hexagon
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI) / 3 - time * 0.08;
+        const hx = barrierX + Math.cos(angle) * (radius * 0.6);
+        const hy = barrierY + Math.sin(angle) * (radius * 0.6);
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.stroke();
+
+      // Counter Ready indicator
+      ctx.font = '900 13px "Impact", sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.textAlign = 'center';
+      ctx.strokeText('「見切 (COUNTER READY)」', barrierX, barrierY - radius - 8);
+      ctx.fillText('「見切 (COUNTER READY)」', barrierX, barrierY - radius - 8);
+      ctx.restore();
+    }
+
+    // 3. Flash Step Counter Kick - Golden Crescent Blade Arc
+    if (fighter.action === 'michael_counter_kick') {
+      ctx.save();
+      const kickX = fighter.x + fighter.width / 2;
+      const kickY = fighter.y + fighter.height * 0.4;
+
+      // Blazing Golden Crescent Arc
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 8;
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(kickX, kickY, 54, -Math.PI * 0.5, Math.PI * 0.45 * dir, dir === -1);
+      ctx.stroke();
+
+      // Inner bright white speed core
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(kickX, kickY, 54, -Math.PI * 0.4, Math.PI * 0.35 * dir, dir === -1);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 4. Golden Axe Kick - Seismic Impact & Golden Geyser
+    if (fighter.action === 'michael_axe_kick') {
+      ctx.save();
+      const footX = fighter.x + fighter.width / 2 + dir * 28;
+      const groundY = fighter.y + fighter.height;
+
+      if (fighter.michaelAxeKickPhase === 'slam') {
+        // Massive Golden Kinetic Ground Shockwave
+        for (let s = 1; s <= 3; s++) {
+          const sDist = s * 45;
+          ctx.strokeStyle = `rgba(250, 204, 21, ${0.9 - s * 0.25})`;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(footX - sDist, groundY);
+          ctx.lineTo(footX + sDist, groundY);
+          ctx.stroke();
+
+          // Rising golden eruption spikes
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.moveTo(footX - sDist, groundY);
+          ctx.lineTo(footX - sDist + 10, groundY - 35 - s * 8);
+          ctx.lineTo(footX - sDist + 20, groundY);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(footX + sDist - 20, groundY);
+          ctx.lineTo(footX + sDist - 10, groundY - 35 - s * 8);
+          ctx.lineTo(footX + sDist, groundY);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Center Ground Impact Flash
+        const slamGrad = ctx.createRadialGradient(footX, groundY, 4, footX, groundY - 30, 80);
+        slamGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        slamGrad.addColorStop(0.3, 'rgba(250, 204, 21, 0.8)');
+        slamGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+        ctx.fillStyle = slamGrad;
+        ctx.beginPath();
+        ctx.ellipse(footX, groundY, 70, 35, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 5. Hat Price Overdrive Surge - Pure Kinetic Compression Field (No shadows/afterimages, pure kinetic force)
+    if (fighter.action === 'michael_overdrive' || (fighter.michaelOverdriveTimer && fighter.michaelOverdriveTimer > 0)) {
+      ctx.save();
+      const cx = fighter.x + fighter.width / 2;
+      const cy = fighter.y + fighter.height * 0.5;
+      const baseY = fighter.y + fighter.height;
+
+      // Concentric Kinetic Shockwave Compression Rings pulsing outward from chest
+      for (let r = 0; r < 3; r++) {
+        const ringProgress = ((time * 0.06 + r * 0.33) % 1);
+        const ringRadius = 15 + ringProgress * 55;
+        const ringAlpha = (1 - ringProgress) * 0.7;
+
+        ctx.strokeStyle = `rgba(250, 204, 21, ${ringAlpha})`;
+        ctx.lineWidth = 2.5 * (1 - ringProgress * 0.5);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, ringRadius * 0.75, ringRadius, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Dense Vibrational Kinetic Force Bubble
+      const pulse = Math.sin(time * 0.6) * 3;
+      const auraGrad = ctx.createRadialGradient(cx, cy, 8, cx, cy, 42 + pulse);
+      auraGrad.addColorStop(0, 'rgba(254, 240, 138, 0.45)');
+      auraGrad.addColorStop(0.6, 'rgba(250, 204, 21, 0.25)');
+      auraGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+      ctx.fillStyle = auraGrad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 42 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sharp Kinetic Electric Static Sparks (Representing stored impact energy)
+      ctx.fillStyle = '#fef08a';
+      for (let i = 0; i < 8; i++) {
+        const sparkAngle = (time * 0.4 + i * (Math.PI / 4));
+        const sparkDist = 20 + Math.sin(time * 0.5 + i) * 16;
+        const sx = cx + Math.cos(sparkAngle) * sparkDist;
+        const sy = cy + Math.sin(sparkAngle) * sparkDist;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Little micro kinetic lightning arcs
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.sin(time + i) * 6, sy + Math.cos(time + i) * 6);
+        ctx.stroke();
+      }
+
+      // Ground Kinetic Pressure Dust Ring
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, baseY, 36 + pulse * 2, 8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // 6. Kinetic Rush: Gold Gale - Flurry of High-Speed Golden Palm & Fist Afterimages
+    if (fighter.action === 'michael_kinetic_barrage') {
+      ctx.save();
+      const chestX = fighter.x + fighter.width / 2 + dir * 18;
+      const chestY = fighter.y + fighter.height * 0.45;
+
+      for (let i = 0; i < 5; i++) {
+        const streamTime = time * 0.7 + i * 1.3;
+        const reach = 30 + (Math.sin(streamTime) + 1) * 35;
+        const offY = (Math.cos(streamTime * 1.2)) * 24;
+        const targetX = chestX + dir * reach;
+        const targetY = chestY + offY;
+
+        // Golden strike line
+        ctx.strokeStyle = `rgba(254, 240, 138, ${0.4 + (i % 3) * 0.2})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(chestX, chestY);
+        ctx.lineTo(targetX, targetY);
+        ctx.stroke();
+
+        // Golden palm/fist impact burst
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(targetX, targetY, 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 7. Ultimate: MAXIMUM PRICE - Hypersonic Criss-Crossing Golden Blitz Trails
+    if (fighter.action === 'michael_ultimate') {
+      ctx.save();
+      const cx = fighter.x + fighter.width / 2;
+      const cy = fighter.y + fighter.height / 2;
+
+      // Blinding Full-Screen Golden Blitz Trails
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = '#fde047';
+      ctx.shadowBlur = 18;
+
+      for (let t = 0; t < 6; t++) {
+        const angle = (time * 0.15 + t * (Math.PI / 3));
+        const startDist = 180;
+        const sx = cx + Math.cos(angle) * startDist;
+        const sy = cy + Math.sin(angle) * (startDist * 0.6);
+        const ex = cx - Math.cos(angle) * startDist;
+        const ey = cy - Math.sin(angle) * (startDist * 0.6);
+
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+      }
+
+      // Grand Golden Manga Title
+      ctx.font = '900 24px "Impact", sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 5;
+      ctx.textAlign = 'center';
+      ctx.strokeText('「帽子価格: 最高価格 (MAXIMUM PRICE)ッ!!」', cx, 55);
+      ctx.fillText('「帽子価格: 最高価格 (MAXIMUM PRICE)ッ!!」', cx, 55);
+      ctx.restore();
+    }
   }
 
   private calcElbow(
@@ -4648,9 +5300,308 @@ export class GameRenderer {
       leftFootY = hipY + 36;
       rightFootX = 10 * direction;
       rightFootY = hipY + 36;
+    } else if (fighter.action === 'michael_palm_thrust') {
+      // Golden Palm Thrust - Forward surging lunge with lead hand flat open-palm
+      headX = 14 * direction;
+      neckX = 10 * direction;
+      hipX = -8 * direction;
+      rightHandX = 46 * direction;
+      rightHandY = neckY + 4;
+      leftHandX = -12 * direction;
+      leftHandY = hipY - 2;
+      leftFootX = -26 * direction;
+      rightFootX = 28 * direction;
+    } else if (fighter.action === 'michael_counter_stance') {
+      // Wing-Chun / Crane Defensive Counter Stance
+      headX = -2 * direction;
+      neckX = -2 * direction;
+      hipX = -2 * direction;
+      rightHandX = 16 * direction;
+      rightHandY = neckY - 4;
+      leftHandX = 26 * direction;
+      leftHandY = neckY + 10;
+      leftFootX = -14 * direction;
+      rightFootX = 18 * direction;
+    } else if (fighter.action === 'michael_counter_kick') {
+      // Explosive High Roundhouse / Spinning Hook Kick
+      headX = -10 * direction;
+      neckX = -6 * direction;
+      hipX = 0;
+      rightHandX = -16 * direction;
+      rightHandY = neckY + 12;
+      leftHandX = 12 * direction;
+      leftHandY = neckY + 2;
+      leftFootX = -10 * direction;
+      leftFootY = hipY + 36;
+      rightFootX = 42 * direction;
+      rightFootY = neckY - 2; // High head-level kick
+    } else if (fighter.action === 'michael_axe_kick') {
+      if (fighter.michaelAxeKickPhase === 'rise') {
+        // High ascending vertical jump with knee chambered
+        headX = 4 * direction;
+        neckX = 2 * direction;
+        hipX = 0;
+        rightHandX = 18 * direction;
+        rightHandY = neckY - 10;
+        leftHandX = -18 * direction;
+        leftHandY = neckY - 8;
+        leftFootX = -6 * direction;
+        leftFootY = hipY + 28;
+        rightFootX = 18 * direction;
+        rightFootY = headY - 14; // High chambered heel
+      } else {
+        // Slamming descending vertical axe kick
+        headX = 6 * direction;
+        neckX = 4 * direction;
+        hipX = -2 * direction;
+        rightHandX = -14 * direction;
+        rightHandY = neckY + 6;
+        leftHandX = 14 * direction;
+        leftHandY = neckY + 6;
+        leftFootX = -18 * direction;
+        leftFootY = hipY + 32;
+        rightFootX = 36 * direction;
+        rightFootY = hipY + 40; // Heel slamming the deck
+      }
+    } else if (fighter.action === 'michael_overdrive') {
+      // Overdrive Power-up - Knees bent, fists clenched, raw kinetic surge
+      headX = 0;
+      neckX = 0;
+      hipX = 0;
+      hipY = neckY + 30;
+      rightHandX = 16 * direction;
+      rightHandY = hipY - 6;
+      leftHandX = -16 * direction;
+      leftHandY = hipY - 6;
+      leftFootX = -22 * direction;
+      rightFootX = 22 * direction;
+    } else if (fighter.action === 'michael_kinetic_barrage') {
+      // Rapid flurry: alternating forward thrusting open-palms
+      const cycle = Math.sin(time * 0.9);
+      headX = 8 * direction;
+      neckX = 6 * direction;
+      hipX = -4 * direction;
+      rightHandX = (32 + cycle * 14) * direction;
+      rightHandY = neckY + 2 - cycle * 6;
+      leftHandX = (32 - cycle * 14) * direction;
+      leftHandY = neckY + 8 + cycle * 6;
+      leftFootX = -20 * direction;
+      rightFootX = 22 * direction;
+    } else if (fighter.action === 'michael_ultimate') {
+      // Supersonic diving blitz strike
+      headX = 18 * direction;
+      neckX = 14 * direction;
+      hipX = -12 * direction;
+      rightHandX = 48 * direction;
+      rightHandY = neckY + 2;
+      leftHandX = 42 * direction;
+      leftHandY = neckY + 12;
+      leftFootX = -32 * direction;
+      rightFootX = 18 * direction;
     }
 
-    // --- DRAWING STICKMAN SKELETON WITH ARTICULATED ELBOWS & KNEES ---
+    // --- MOUNTED GEORGE EQUESTRIAN RIDING & VAULT-MOUNT OVERRIDE FOR MICHAEL JUNISTER ---
+    if (!isStand && fighter.charId === 'michael') {
+      const isUnhorsedHit = actionToDraw === 'hit' || actionToDraw === 'knockback' || actionToDraw === 'knockdown' || actionToDraw === 'wakeup';
+      const isMounting = (fighter.georgeMountingTimer || 0) > 0;
+
+      // 1. If hit/knocked down/waking up: DO NOT override with riding stance! Let tumble & ground recovery animate naturally!
+      if (isUnhorsedHit) {
+        // Natural hit/knockdown bones apply
+      }
+      // 2. Multi-Stage Athletic Vault-Mounting Animation Sequence
+      else if (isMounting) {
+        const mountTimer = fighter.georgeMountingTimer || 0;
+        if (mountTimer > 20) {
+          // Stage 1: Approach & Reach for Saddle (Timer 34 -> 21)
+          const p = (34 - mountTimer) / 13;
+          headX = (6 + p * 6) * direction;
+          neckX = (3 + p * 5) * direction;
+          hipX = (-4 - p * 2) * direction;
+          hipY = fighter.height - 38;
+          leftFootX = -18 * direction;
+          leftFootY = fighter.height;
+          rightFootX = 16 * direction;
+          rightFootY = fighter.height;
+          leftKneeX = -10 * direction;
+          leftKneeY = hipY + 18;
+          rightKneeX = 14 * direction;
+          rightKneeY = hipY + 18;
+          // Reaching forward towards George's incoming saddle and reins
+          rightHandX = (28 + p * 18) * direction;
+          rightHandY = hipY - 8 - p * 6;
+          leftHandX = (16 + p * 16) * direction;
+          leftHandY = hipY - 2 - p * 4;
+        } else if (mountTimer > 7) {
+          // Stage 2: Equestrian Vault Leap & Leg Arc (Timer 20 -> 8)
+          const p = (20 - mountTimer) / 13;
+          const vaultSin = Math.sin(p * Math.PI);
+          hipY = 48 - vaultSin * 28; // Dynamic vault arc in the air!
+          neckY = hipY - 24;
+          headY = neckY - headRadius;
+          hipX = (-6 + p * 6) * direction;
+          neckX = hipX + 10 * direction;
+          headX = neckX + 6 * direction;
+          // Left hand firmly pressing off the saddle pommel
+          leftHandX = (8 * direction);
+          leftHandY = 26;
+          // Right hand swinging over with balance
+          rightHandX = (22 + p * 10) * direction;
+          rightHandY = neckY + 4;
+          // Right leg swinging gracefully over horse's rump
+          rightFootX = (-16 + p * 32) * direction;
+          rightFootY = hipY + 4 - vaultSin * 12;
+          rightKneeX = rightFootX * 0.6 + 6 * direction;
+          rightKneeY = hipY + 6;
+          // Left leg trailing upward in the leap
+          leftFootX = (-20 + p * 14) * direction;
+          leftFootY = hipY + 16;
+          leftKneeX = leftFootX + 4 * direction;
+          leftKneeY = hipY + 8;
+        } else {
+          // Stage 3: Saddle Landing & Reins Grip (Timer 7 -> 0)
+          const p = (7 - mountTimer) / 7;
+          hipY = 46 - (1 - p) * 6;
+          neckY = hipY - 26;
+          headY = neckY - headRadius;
+          hipX = 0;
+          neckX = 8 * direction;
+          headX = neckX + 4 * direction;
+          // Legs slotting into stirrup irons
+          leftFootX = -1 * direction;
+          leftFootY = hipY + 26;
+          leftKneeX = 8 * direction;
+          leftKneeY = hipY + 12;
+          rightFootX = 4 * direction;
+          rightFootY = hipY + 28;
+          rightKneeX = 14 * direction;
+          rightKneeY = hipY + 13;
+          // Hands gripping reins
+          rightHandX = neckX + 14 * direction;
+          rightHandY = neckY + 13;
+          leftHandX = neckX + 10 * direction;
+          leftHandY = neckY + 15;
+        }
+      }
+      // 3. Fully Mounted Equestrian Stance
+      else if (fighter.isGeorgeMounted) {
+        const isMoving = Math.abs(fighter.vx) > 0.25 || actionToDraw === 'walk';
+        const isFastGallop = Math.abs(fighter.vx) > 2.0;
+        const isMovingAttack = actionToDraw === 'michael_palm_thrust' || actionToDraw === 'michael_kinetic_barrage' || actionToDraw === 'michael_axe_kick' || actionToDraw === 'michael_ultimate';
+        const isGalloping = isFastGallop || isMovingAttack;
+        const isWalking = isMoving && !isGalloping;
+        const isRearing = actionToDraw === 'michael_counter_stance';
+
+        const walkCycle = (time * 0.24) % (Math.PI * 2);
+        const gallopCycle = (time * 0.42) % (Math.PI * 2);
+        const bodyBob = isRearing 
+          ? -18 
+          : (isGalloping 
+              ? Math.sin(gallopCycle * 2) * 4.8 
+              : (isWalking 
+                  ? Math.sin(walkCycle * 2) * 2.2 
+                  : Math.sin(time * 0.08) * 1.5));
+
+        // Saddle level in stickman coordinates (Horse body is at 62 + bodyBob, saddle is at -16)
+        const saddleY = (fighter.height - 38) + bodyBob - 16;
+        
+        // Professional Thoroughbred Racing Stance (Aerodynamic 2-Point Shock-Absorbing Jockey Crouch)
+        const jockeyRise = isGalloping ? 3.5 : 0;
+        hipX = (isRearing ? -10 : (isGalloping ? -3 : 0)) * direction;
+        hipY = saddleY - jockeyRise;
+
+        // Dynamic forward lean matching gait discipline
+        let forwardLean = 4;
+        if (isRearing) {
+          forwardLean = -12;
+        } else if (isGalloping) {
+          forwardLean = isFastGallop ? 16 : 12;
+        } else if (isWalking) {
+          forwardLean = 6 + Math.sin(walkCycle) * 1.8;
+        }
+
+        neckX = hipX + forwardLean * direction;
+        neckY = hipY - 26;
+
+        headX = neckX + (forwardLean * 0.35) * direction;
+        headY = neckY - headRadius;
+
+        // Realistic equestrian leg bend astride saddle into stirrup irons
+        leftKneeX = hipX + (isRearing ? -2 : 7) * direction;
+        leftKneeY = hipY + 12;
+        leftFootX = hipX + (isRearing ? -12 : -2) * direction;
+        leftFootY = hipY + 26;
+
+        rightKneeX = hipX + (isRearing ? 4 : 14) * direction;
+        rightKneeY = hipY + 13;
+        rightFootX = hipX + (isRearing ? -4 : 4) * direction;
+        rightFootY = hipY + 28;
+
+        // Hands holding reins or executing riding martial attacks
+        if (actionToDraw === 'michael_palm_thrust') {
+          // Dramatic explosive forward lunge in stirrups over George's neck
+          headX = neckX + 16 * direction;
+          neckX += 14 * direction;
+          rightHandX = neckX + 44 * direction;
+          rightHandY = neckY + 1;
+          leftHandX = neckX + 6 * direction;
+          leftHandY = neckY + 12;
+        } else if (actionToDraw === 'michael_counter_stance') {
+          // George rearing up on hind legs, Michael leaning back in tight rein lock
+          headX = neckX - 4 * direction;
+          rightHandX = neckX + 16 * direction;
+          rightHandY = neckY - 6;
+          leftHandX = neckX + 22 * direction;
+          leftHandY = neckY + 3;
+        } else if (actionToDraw === 'michael_axe_kick') {
+          // High equestrian leap / trample kick launched from stirrups
+          hipY = saddleY - 14;
+          neckY = hipY - 26;
+          headY = neckY - headRadius;
+          rightFootX = neckX + 32 * direction;
+          rightFootY = neckY - 8;
+          rightKneeX = neckX + 20 * direction;
+          rightKneeY = neckY + 4;
+          rightHandX = neckX - 10 * direction;
+          rightHandY = neckY + 6;
+          leftHandX = neckX + 12 * direction;
+          leftHandY = neckY + 6;
+        } else if (actionToDraw === 'michael_kinetic_barrage') {
+          // Hypersonic galloping flurry of punches over horse neck
+          const flurryCycle = Math.sin(time * 0.95);
+          headX = neckX + 8 * direction;
+          neckX += 6 * direction;
+          rightHandX = neckX + (30 + flurryCycle * 18) * direction;
+          rightHandY = neckY + 3 - flurryCycle * 6;
+          leftHandX = neckX + (30 - flurryCycle * 18) * direction;
+          leftHandY = neckY + 9 + flurryCycle * 6;
+        } else if (actionToDraw === 'michael_overdrive') {
+          // Standing tall in stirrups radiating pure kinetic compression
+          hipY = saddleY - 6;
+          neckY = hipY - 26;
+          headY = neckY - headRadius;
+          rightHandX = neckX + 16 * direction;
+          rightHandY = hipY - 2;
+          leftHandX = neckX - 14 * direction;
+          leftHandY = hipY - 2;
+        } else if (actionToDraw === 'michael_ultimate') {
+          // Devil's Run Grand Gallop: aerodynamic racing charge
+          headX = neckX + 16 * direction;
+          neckX += 16 * direction;
+          rightHandX = neckX + 46 * direction;
+          rightHandY = neckY - 2;
+          leftHandX = neckX + 8 * direction;
+          leftHandY = neckY + 12;
+        } else {
+          // Athletic equestrian rein grip with galloping rhythmic shock dampening
+          const reinBob = isGalloping ? Math.sin(gallopCycle) * 3 : (isWalking ? Math.sin(walkCycle) * 1.5 : 0);
+          rightHandX = neckX + (isGalloping ? 18 : 12) * direction;
+          rightHandY = neckY + 13 + reinBob;
+          leftHandX = neckX + (isGalloping ? 12 : 8) * direction;
+          leftHandY = neckY + 15 - reinBob;
+        }
+      }
+    }
     // 1. Draw Legs
     ctx.beginPath();
     ctx.moveTo(hipX, hipY);
@@ -5033,7 +5984,7 @@ export class GameRenderer {
       ctx.fill();
     }
 
-    // 2. DIO (Golden Spiky Hair, Green Heart Headband, Open Jacket, Knee Hearts)
+    // 2. DIO (PART 3: Iconic Yellow Open Jacket, High Popped Collar, Green Heart Accessories, Golden Spiky Hair)
     else if (charId === 'dio') {
       // Red Piercing Vampire Eye
       ctx.fillStyle = '#ef4444';
@@ -5072,23 +6023,78 @@ export class GameRenderer {
       // Green Heart Headband Jewel at center
       this.drawHeart(ctx, headX + direction * 3, headY - 6, 4.5, '#22c55e', '#15803d');
 
-      // Yellow Jacket Collar & Open V-Chest
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(neckX - 6, neckY - 4, 12, 6);
-      ctx.fillStyle = '#0f172a'; // Black inner top
+      // --- DIO'S ICONIC PART 3 STARDUST CRUSADERS YELLOW JACKET ---
+      // Tight Black Undershirt / Tank Top
+      ctx.fillStyle = '#0f172a';
       ctx.beginPath();
-      ctx.moveTo(neckX - 4, neckY + 2);
-      ctx.lineTo(neckX + 4, neckY + 2);
-      ctx.lineTo(neckX, neckY + 14);
+      ctx.moveTo(neckX - 5, neckY);
+      ctx.lineTo(neckX + 5, neckY);
+      ctx.lineTo(hipX + 4, hipY);
+      ctx.lineTo(hipX - 4, hipY);
       ctx.closePath();
       ctx.fill();
 
+      // Yellow Jacket Flaring Wings & Sides (#eab308)
+      ctx.fillStyle = '#eab308';
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.8;
+      const jacketWave = Math.sin(time * 0.15) * 4;
+
+      // Back Coat Tail / Flaring Jacket Sleeve
+      ctx.beginPath();
+      ctx.moveTo(neckX - direction * 14, neckY + 1);
+      ctx.lineTo(neckX - direction * 5, neckY + 1);
+      ctx.lineTo(hipX - direction * 4, hipY + 10);
+      ctx.lineTo(hipX - direction * 18 + jacketWave, hipY + 24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Front Coat Lapel & Sleeve
+      ctx.beginPath();
+      ctx.moveTo(neckX + direction * 14, neckY + 1);
+      ctx.lineTo(neckX + direction * 5, neckY + 1);
+      ctx.lineTo(hipX + direction * 4, hipY + 10);
+      ctx.lineTo(hipX + direction * 16, hipY + 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Popped Golden Yellow Jacket High Collar
+      ctx.fillStyle = '#facc15';
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(neckX - 9, neckY + 2);
+      ctx.lineTo(neckX - 11, neckY - 7);
+      ctx.lineTo(neckX + 11, neckY - 7);
+      ctx.lineTo(neckX + 9, neckY + 2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Green Heart Collar Pins (Left & Right collar tips)
+      this.drawHeart(ctx, neckX - 7, neckY - 2, 3.2, '#22c55e', '#15803d');
+      this.drawHeart(ctx, neckX + 7, neckY - 2, 3.2, '#22c55e', '#15803d');
+
+      // Yellow Trousers (#eab308)
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(leftKneeX, leftKneeY);
+      ctx.lineTo(leftFootX, leftFootY);
+      ctx.moveTo(hipX, hipY);
+      ctx.lineTo(rightKneeX, rightKneeY);
+      ctx.lineTo(rightFootX, rightFootY);
+      ctx.stroke();
+
       // Green Heart Belt Buckle
-      this.drawHeart(ctx, hipX, hipY - 2, 4.5, '#22c55e', '#15803d');
+      this.drawHeart(ctx, hipX, hipY - 2, 4.8, '#22c55e', '#15803d');
 
       // Green Heart Knee Pads directly on actual articulated knees
-      this.drawHeart(ctx, leftKneeX, leftKneeY, 3.5, '#22c55e', '#15803d');
-      this.drawHeart(ctx, rightKneeX, rightKneeY, 3.5, '#22c55e', '#15803d');
+      this.drawHeart(ctx, leftKneeX, leftKneeY, 3.8, '#22c55e', '#15803d');
+      this.drawHeart(ctx, rightKneeX, rightKneeY, 3.8, '#22c55e', '#15803d');
     }
 
     // 3. JOSUKE HIGASHIKATA (Huge Iconic Pompadour Quiff, Anchor & Peace Badges, Double Chains)
@@ -6601,63 +7607,55 @@ export class GameRenderer {
         ctx.arc(headX + 4 * direction, headY - 1, 2.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // 4. Muscular Male Chest & Abs (Visible inside open coat)
-        ctx.strokeStyle = '#94a3b8';
+        // 4. Black Fitted Skin-Tight Shirt (Pakaian Ketat Hitam) covering torso & left shoulder
+        ctx.fillStyle = '#0f172a';
+        ctx.strokeStyle = '#020617';
         ctx.lineWidth = 1.5;
-
-        // Pec Muscle Lines
         ctx.beginPath();
-        ctx.moveTo(neckX - 6 * direction, neckY + 8);
-        ctx.lineTo(neckX, neckY + 12);
-        ctx.lineTo(neckX + 6 * direction, neckY + 8);
+        ctx.moveTo(neckX - 10, neckY);
+        ctx.lineTo(neckX + 10, neckY);
+        ctx.lineTo(hipX + 8, hipY);
+        ctx.lineTo(hipX - 8, hipY);
+        ctx.closePath();
+        ctx.fill();
         ctx.stroke();
 
-        // Abdominal Muscle Lines
+        // Athletic Chest & Muscle Contour Seams on fitted black shirt
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.moveTo(neckX, neckY + 12);
+        ctx.moveTo(neckX - 6 * direction, neckY + 6);
+        ctx.lineTo(neckX, neckY + 11);
+        ctx.lineTo(neckX + 6 * direction, neckY + 6);
+        ctx.moveTo(neckX, neckY + 11);
         ctx.lineTo(neckX, hipY - 2);
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(neckX - 4, neckY + 18);
-        ctx.lineTo(neckX + 4, neckY + 18);
-        ctx.moveTo(neckX - 4, neckY + 24);
-        ctx.lineTo(neckX + 4, neckY + 24);
-        ctx.stroke();
-
-        // 5. Broad Heavy Leather Coat (#1e293b) with Epaulets
+        // 5. ASYMMETRICAL SINGLE-SHOULDER BLACK LEATHER JACKET (Jaket Hitam Sebelah di Bahu Kanan)
+        // Right shoulder side (bahu kanan Dipez: neckX - direction * 14)
         ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#0f172a';
+        ctx.strokeStyle = '#020617';
         ctx.lineWidth = 1.8;
+        const jacketWave = Math.sin(time * 0.15) * 4;
+
         ctx.beginPath();
-        ctx.moveTo(neckX - 16, neckY + 2); // Broad shoulders
-        ctx.lineTo(neckX + 16, neckY + 2);
-        const coatWave = Math.sin(time * 0.15) * 5;
-        ctx.lineTo(hipX + 22 * direction + coatWave, hipY + 34);
-        ctx.lineTo(hipX - 22 * direction - coatWave, hipY + 34);
+        ctx.moveTo(neckX - direction * 16, neckY - 2); // Over right shoulder
+        ctx.lineTo(neckX - direction * 3, neckY - 2);
+        ctx.lineTo(neckX, neckY + 12);
+        ctx.lineTo(hipX - direction * 20 + jacketWave, hipY + 30); // Drape & flaring coat tail on right side only
+        ctx.lineTo(hipX - direction * 6, hipY + 14);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Broad Shoulder Epaulets / Pads
-        ctx.fillStyle = '#334155';
+        // Single Shoulder Epaulet & Gold Trim on Right Shoulder
+        ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.2;
         ctx.beginPath();
-        ctx.rect(neckX - 17, neckY + 1, 7, 4);
-        ctx.rect(neckX + 10, neckY + 1, 7, 4);
+        ctx.rect(neckX - direction * 17 - 3, neckY - 1, 8, 5);
         ctx.fill();
         ctx.stroke();
-
-        // Coat Lapels & Golden Buckle Belt
-        ctx.fillStyle = '#475569';
-        ctx.beginPath();
-        ctx.moveTo(neckX - 12, neckY + 2);
-        ctx.lineTo(neckX - 4, neckY + 14);
-        ctx.lineTo(neckX + 4, neckY + 14);
-        ctx.lineTo(neckX + 12, neckY + 2);
-        ctx.closePath();
-        ctx.fill();
 
         // Tactical Belt & Gold Buckle
         ctx.fillStyle = '#020617';
@@ -6679,6 +7677,21 @@ export class GameRenderer {
           ctx.fill();
         }
       }
+    }
+
+    // 14. ARABIAN FAT (THE SUN STAND USER - ARABIA FATS)
+    else if (charId === 'arabian_fat') {
+      this.drawArabianFat(ctx, fighter, headX, headY, headRadius, neckX, neckY, hipX, hipY, leftHandX, leftHandY, rightHandX, rightHandY, direction, time);
+    }
+
+    // 15. MICHAEL JUNISTER (GHOST: HAT PRICE - GOLDEN KINETIC MARTIAL ARTIST)
+    else if (charId === 'michael') {
+      this.drawMichaelJunister(ctx, fighter, headX, headY, headRadius, neckX, neckY, hipX, hipY, leftHandX, leftHandY, rightHandX, rightHandY, direction, time);
+    }
+
+    // 16. WALLY WABLE / PERSTEIN (GHOST: WABLE THE METAL CUTTER)
+    else if (charId === 'perstein') {
+      this.drawPerstein(ctx, fighter, headX, headY, headRadius, neckX, neckY, hipX, hipY, leftHandX, leftHandY, rightHandX, rightHandY, direction, time);
     }
 
     // 12. DEFAULT MARTIAL ARTS STICKMAN (White Headband with Red Ribbons & Belt)
@@ -7484,6 +8497,169 @@ export class GameRenderer {
       }
     }
 
+    // 10. DIPEZ STAND (PHOTON ATOM CONVERTER / GLOWING MAN - 5 SHARP CROWN SPIKES)
+    else if (charId === 'dipez') {
+      // Piercing Blinding Gold Photon Eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(headX + 5 * direction, headY - 1, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // 5 SHARP CROWN SPIKES ON HEAD ("5 bagian tajam di kepala")
+      ctx.fillStyle = '#fde047';
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.8;
+
+      // Spike 1 (Center Spike - Tallest)
+      ctx.beginPath();
+      ctx.moveTo(headX - 3, headY - headRadius + 1);
+      ctx.lineTo(headX, headY - headRadius - 16);
+      ctx.lineTo(headX + 3, headY - headRadius + 1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Spike 2 (Front-Mid Spike)
+      ctx.beginPath();
+      ctx.moveTo(headX + direction * 2, headY - headRadius + 2);
+      ctx.lineTo(headX + direction * 8, headY - headRadius - 12);
+      ctx.lineTo(headX + direction * 6, headY - headRadius + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Spike 3 (Front-Outer Spike)
+      ctx.beginPath();
+      ctx.moveTo(headX + direction * 5, headY - headRadius + 4);
+      ctx.lineTo(headX + direction * 14, headY - headRadius - 6);
+      ctx.lineTo(headX + direction * 9, headY - headRadius + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Spike 4 (Back-Mid Spike)
+      ctx.beginPath();
+      ctx.moveTo(headX - direction * 2, headY - headRadius + 2);
+      ctx.lineTo(headX - direction * 8, headY - headRadius - 12);
+      ctx.lineTo(headX - direction * 6, headY - headRadius + 3);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Spike 5 (Back-Outer Spike)
+      ctx.beginPath();
+      ctx.moveTo(headX - direction * 5, headY - headRadius + 4);
+      ctx.lineTo(headX - direction * 14, headY - headRadius - 6);
+      ctx.lineTo(headX - direction * 9, headY - headRadius + 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Internal White Hot Energy Core dots inside the 5 spikes
+      ctx.fillStyle = '#ffffff';
+      for (const offset of [0, direction * 7, direction * 12, -direction * 7, -direction * 12]) {
+        ctx.beginPath();
+        ctx.arc(headX + offset * 0.5, headY - headRadius - 4, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Crystalline Photon Shoulder Spheres & Chest Diamond Core
+      ctx.fillStyle = '#fef08a';
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(neckX - direction * 8, neckY + 4, 5.5, 0, Math.PI * 2);
+      ctx.arc(neckX + direction * 8, neckY + 4, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Chest Photon Atom Converter Core
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(neckX, neckY + 3);
+      ctx.lineTo(neckX + 5, neckY + 8);
+      ctx.lineTo(neckX, neckY + 13);
+      ctx.lineTo(neckX - 5, neckY + 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // 10. WALLY WABLE / PERSTEIN (GHOST: WABLE THE METAL CUTTER)
+    else if (charId === 'perstein') {
+      // Sleek Chrome & Gunmetal Steel Humanoid Head with cyan visor
+      ctx.fillStyle = '#0f172a';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(headX, headY, headRadius + 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Precision Machined Head Plate Seams
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(headX, headY - headRadius - 2);
+      ctx.lineTo(headX, headY - 2);
+      ctx.stroke();
+
+      // Sleek Metallic Faceplate & Cyan Glowing Visor Slit
+      ctx.strokeStyle = '#38bdf8';
+      ctx.shadowColor = '#0284c7';
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(headX - 7 * direction, headY - 1);
+      ctx.lineTo(headX + 7 * direction, headY - 1);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Heavy Industrial Center Chest Drive Sprocket
+      const chestSprocketX = neckX;
+      const chestSprocketY = neckY + 12;
+      this.drawDriveChainSprocket(ctx, chestSprocketX, chestSprocketY, 12, 10, time * 0.6 * direction, '#38bdf8');
+
+      // 70m Motorcycle Drive Chains wrapped tightly in criss-cross harness across torso
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(neckX - 14 * direction, neckY - 2);
+      ctx.lineTo(neckX + 14 * direction, neckY + 18);
+      ctx.moveTo(neckX + 14 * direction, neckY - 2);
+      ctx.lineTo(neckX - 14 * direction, neckY + 18);
+      ctx.stroke();
+
+      // Chain Link Pins on Harness
+      ctx.fillStyle = '#38bdf8';
+      for (let p = 0; p < 6; p++) {
+        const px = neckX - 12 * direction + p * 4 * direction;
+        const py = neckY + p * 3;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // High-RPM Drive Chain Sprocket Loops on Shoulders
+      for (const side of [-1, 1]) {
+        const sprocketX = neckX + side * 17 * direction;
+        const sprocketY = neckY + 2;
+        this.drawDriveChainSprocket(ctx, sprocketX, sprocketY, 10, 8, time * 0.8 * side, '#0284c7');
+
+        // Endless Drive Chain Feed Loop through Shoulder Sprocket
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(sprocketX, sprocketY, 14, 5, side * 0.3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     // 9. DEFAULT STICKMAN SPIRIT
     else {
       // Ethereal glowing halo ring
@@ -7562,6 +8738,90 @@ export class GameRenderer {
         ctx.beginPath();
         ctx.arc(fistX + (Math.random() - 0.5) * 10, fistY + (Math.random() - 0.5) * 10, 2, 0, Math.PI * 2);
         ctx.fill();
+      }
+    } else if (charId === 'perstein') {
+      // Wable the Metal Cutter: High-RPM 70m Motorcycle Drive Chains Slashing & Whipping Barrage!
+      const chainCount = 8;
+      for (let i = 0; i < chainCount; i++) {
+        const phase = (time * 0.75 + i * (Math.PI / 4)) % (Math.PI * 2);
+        const extend = 45 + Math.sin(phase) * 65;
+        const armY = neckY + Math.cos(phase * 1.5) * 22;
+        const tipX = neckX + (extend + 30) * direction;
+        const tipY = armY + (Math.sin(time * 3.2 + i) * 10);
+
+        // Motion speed blur trail
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(neckX, neckY + 4);
+        ctx.lineTo(tipX, tipY);
+        ctx.stroke();
+
+        // High-tension Steel Motorcycle Roller Drive Chain (Multi-Segment Polyline)
+        const segments = 6;
+        const pts: { x: number; y: number }[] = [{ x: neckX, y: neckY + 4 }];
+        for (let s = 1; s <= segments; s++) {
+          const t = s / segments;
+          const sx = neckX + (tipX - neckX) * t;
+          const sy = neckY + 4 + (tipY - (neckY + 4)) * t + Math.sin(time * 3.5 + i + s * 0.8) * (8 * (1 - t));
+          pts.push({ x: sx, y: sy });
+        }
+
+        // Inner & Outer Link Plates (Figure-8)
+        ctx.strokeStyle = i % 2 === 0 ? '#cbd5e1' : '#94a3b8';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) {
+          ctx.lineTo(pts[s].x, pts[s].y);
+        }
+        ctx.stroke();
+
+        // Precision Roller Pins & Rivets along the Chain
+        for (let s = 1; s < pts.length; s++) {
+          const pt = pts[s];
+          // Outer Figure-8 Link Plate outline
+          ctx.fillStyle = s % 2 === 0 ? '#64748b' : '#334155';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Chrome Roller Pin Rivet
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // High-RPM Master Sprocket & Hook at the lead tip
+        ctx.save();
+        ctx.translate(tipX, tipY);
+        ctx.rotate(time * 1.2 + i);
+        ctx.fillStyle = '#0284c7';
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // 4 Sprocket Teeth on the Tip Hook
+        ctx.fillStyle = '#f8fafc';
+        for (let t = 0; t < 4; t++) {
+          const ta = (t * Math.PI) / 2;
+          ctx.beginPath();
+          ctx.arc(Math.cos(ta) * 8, Math.sin(ta) * 8, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // High Heat Friction Sparks
+        if (Math.random() < 0.5) {
+          ctx.fillStyle = Math.random() < 0.5 ? '#facc15' : '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(tipX + (Math.random() - 0.5) * 16, tipY + (Math.random() - 0.5) * 16, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     } else if (isSilverChariot) {
       // POLNAREFF & SILVER CHARIOT: Supersonic Needle Rapier Thrust Barrage!
@@ -7712,6 +8972,22 @@ export class GameRenderer {
       ctx.save();
       if ((!!p.isParallelWorld) !== isLocalParallelPOV) {
         ctx.globalAlpha *= 0.28;
+      }
+
+      // Generic Time Stop aura indicator for all frozen non-knife projectiles (cars, lasers, debris, etc.)
+      if (p.isFrozenInTime && p.type !== 'knife') {
+        ctx.save();
+        ctx.strokeStyle = '#facc15';
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        const centerX = p.x + (p.width ? p.width / 2 : 0);
+        const centerY = p.y + (p.height ? p.height / 2 : 0);
+        const rad = Math.max(16, (Math.max(p.width || 20, p.height || 20) / 2) + 6 + Math.sin(time * 0.3 + (p.id || 0)) * 3);
+        ctx.arc(centerX, centerY, rad, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
 
       if (p.type === 'knife') {
@@ -8982,6 +10258,238 @@ export class GameRenderer {
           ctx.arc(px, py, 3 + (i % 3), 0, Math.PI * 2);
           ctx.fill();
         }
+      } else if (p.type === 'sun_heat_laser') {
+        // ★ THE SUN AUTO-TARGETING HEAT LASER ★
+        const lx = p.x;
+        const ly = p.y;
+        const dirAngle = Math.atan2(p.vy, p.vx);
+
+        ctx.save();
+        ctx.translate(lx, ly);
+        ctx.rotate(dirAngle);
+
+        // Blazing outer orange heat aura
+        ctx.strokeStyle = 'rgba(249, 115, 22, 0.5)';
+        ctx.lineWidth = 14;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-20, 0);
+        ctx.lineTo(25, 0);
+        ctx.stroke();
+
+        // Inner bright red-yellow ray
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(-16, 0);
+        ctx.lineTo(22, 0);
+        ctx.stroke();
+
+        // White-hot core
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-12, 0);
+        ctx.lineTo(18, 0);
+        ctx.stroke();
+
+        // Glowing Flare Head
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#f97316';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(18, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else if (p.type === 'sun_flare_bomb') {
+        // ★ SOLAR PROMINENCE BOMB ★
+        const bx = p.x + p.width / 2;
+        const by = p.y + p.height / 2;
+        const radius = 14;
+
+        ctx.save();
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 18;
+
+        // Rotating Corona Fire Spikes
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.8)';
+        ctx.lineWidth = 2.5;
+        const spikeCount = 8;
+        for (let s = 0; s < spikeCount; s++) {
+          const angle = (s / spikeCount) * Math.PI * 2 + time * 0.2;
+          const slen = radius + 6 + Math.sin(time * 0.4 + s) * 4;
+          ctx.beginPath();
+          ctx.moveTo(bx + Math.cos(angle) * radius, by + Math.sin(angle) * radius);
+          ctx.lineTo(bx + Math.cos(angle) * slen, by + Math.sin(angle) * slen);
+          ctx.stroke();
+        }
+
+        // Fireball outer body
+        const grad = ctx.createRadialGradient(bx, by, 2, bx, by, radius);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.3, '#fef08a');
+        grad.addColorStop(0.7, '#f97316');
+        grad.addColorStop(1, '#ef4444');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(bx, by, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else if (p.type === 'pucci_disc') {
+        // ★ WHITESNAKE MEMORY / STAND DISC ★
+        const cx = p.x + (p.width ? p.width / 2 : 0);
+        const cy = p.y + (p.height ? p.height / 2 : 0);
+        const radius = 12;
+        const spin = time * 0.45;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(spin);
+
+        // Rainbow Holographic Prismatic Disc Body
+        const discGrad = ctx.createLinearGradient(-radius, -radius, radius, radius);
+        discGrad.addColorStop(0, '#e2e8f0');
+        discGrad.addColorStop(0.25, '#c084fc');
+        discGrad.addColorStop(0.5, '#38bdf8');
+        discGrad.addColorStop(0.75, '#facc15');
+        discGrad.addColorStop(1, '#f472b6');
+
+        ctx.fillStyle = discGrad;
+        ctx.strokeStyle = '#f8fafc';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Concentric track grooves
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner clear ring
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // G-D-S-A / JOJO text on disc
+        ctx.font = '900 6px monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('DISC', 0, -radius * 0.45);
+
+        ctx.restore();
+      } else if (p.type === 'pucci_acid_pool') {
+        // Flying toxic acid digestive blob
+        const cx = p.x + (p.width ? p.width / 2 : 0);
+        const cy = p.y + (p.height ? p.height / 2 : 0);
+        const r = 10;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+
+        const acidGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, r);
+        acidGrad.addColorStop(0, '#f3e8ff');
+        acidGrad.addColorStop(0.4, '#c084fc');
+        acidGrad.addColorStop(0.8, '#9333ea');
+        acidGrad.addColorStop(1, 'rgba(88, 28, 135, 0.4)');
+
+        ctx.fillStyle = acidGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + Math.sin(time * 0.3) * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sizzling drops
+        ctx.fillStyle = '#e9d5ff';
+        ctx.beginPath();
+        ctx.arc(-r * 0.3, -r * 0.3, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else if (p.type === 'cmoon_debris') {
+        // Levitating stone slab infused with emerald gravitational energy
+        const cx = p.x + (p.width ? p.width / 2 : 0);
+        const cy = p.y + (p.height ? p.height / 2 : 0);
+        const w = p.width || 44;
+        const h = p.height || 26;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((p.id || 0) * 0.5 + time * 0.08);
+
+        // Emerald Gravity Aura Ring
+        ctx.strokeStyle = '#34d399';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8);
+
+        // Concrete / Stone Slab
+        ctx.fillStyle = '#475569';
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2;
+        ctx.fillRect(-w / 2, -h / 2, w, h);
+        ctx.strokeRect(-w / 2, -h / 2, w, h);
+
+        // Cracks & glowing emerald veins
+        ctx.strokeStyle = '#6ee7b7';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-w / 3, -h / 2);
+        ctx.lineTo(0, 0);
+        ctx.lineTo(w / 4, h / 2);
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (p.type === 'mih_knife') {
+        // High-velocity golden throwing knife
+        const dir = p.vx >= 0 ? 1 : -1;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        // Golden Mach-cone motion blur trail
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.7)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-24 * dir, 0);
+        ctx.lineTo(14 * dir, 0);
+        ctx.stroke();
+
+        // Sharp golden blade
+        ctx.fillStyle = '#fef08a';
+        ctx.strokeStyle = '#ca8a04';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-12 * dir, -3);
+        ctx.lineTo(14 * dir, 0);
+        ctx.lineTo(-12 * dir, 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (p.type === 'perstein_spark_wave') {
+        // High heat molten metal spark shrapnel
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.fillStyle = '#facc15';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
 
       ctx.restore();
@@ -9031,6 +10539,117 @@ export class GameRenderer {
         ctx.strokeText(p.text || 'ゴ', p.x, p.y);
         ctx.fillText(p.text || 'ゴ', p.x, p.y);
         ctx.shadowBlur = 0;
+      } else if (p.type === 'acid_bubble') {
+        // Corrosive bubbling acid orb with specular glint
+        const r = (p.size || 6) * (0.6 + (1 - alpha) * 0.5);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        const bubbleGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+        bubbleGrad.addColorStop(0, '#ffffff');
+        bubbleGrad.addColorStop(0.3, '#e9d5ff');
+        bubbleGrad.addColorStop(0.7, '#c084fc');
+        bubbleGrad.addColorStop(1, '#9333ea');
+
+        ctx.fillStyle = bubbleGrad;
+        ctx.strokeStyle = '#e9d5ff';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Specular dot
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(-r * 0.3, -r * 0.3, r * 0.28, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      } else if (p.type === 'gravity_arrow') {
+        // Glowing Neon Emerald Directional Vector Chevron
+        const axis = p.gravityAxis || this.activeGravityAxis || 'down';
+        ctx.save();
+        ctx.translate(p.x, p.y);
+
+        if (axis === 'right') {
+          ctx.rotate(0);
+        } else if (axis === 'left') {
+          ctx.rotate(Math.PI);
+        } else if (axis === 'up') {
+          ctx.rotate(-Math.PI / 2);
+        } else {
+          ctx.rotate(Math.PI / 2);
+        }
+
+        const size = p.size || 18;
+        ctx.strokeStyle = p.color || '#34d399';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 8;
+        ctx.lineWidth = 3 * alpha;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(-size, -size * 0.8);
+        ctx.lineTo(size * 0.8, 0);
+        ctx.lineTo(-size, size * 0.8);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-size * 1.6, 0);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (p.type === 'spiral_word') {
+        // Sacred Word of DIO ascending in golden holy spiral
+        const fontSize = p.size || 18;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.font = `900 ${fontSize}px "Georgia", serif`;
+        ctx.fillStyle = p.color || '#facc15';
+        ctx.strokeStyle = '#451a03';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#facc15';
+        ctx.shadowBlur = 8;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(p.text || '★', 0, 0);
+        ctx.fillText(p.text || '★', 0, 0);
+
+        // Little halo circle
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.8)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(0, -fontSize * 0.6, fontSize * 0.45, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.restore();
+      } else if (p.type === 'inversion_spiral') {
+        // Spacetime Inversion Twisting Spiral Distortion
+        const r = (p.size || 30) * (1.5 - alpha * 0.5);
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((1 - alpha) * Math.PI * 4);
+
+        ctx.strokeStyle = p.color || '#34d399';
+        ctx.lineWidth = 2.5 * alpha;
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 10;
+
+        ctx.beginPath();
+        const loops = 3;
+        for (let a = 0; a < Math.PI * 2 * loops; a += 0.2) {
+          const rad = (a / (Math.PI * 2 * loops)) * r;
+          const sx = Math.cos(a) * rad;
+          const sy = Math.sin(a) * rad;
+          if (a === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+
+        ctx.restore();
       } else if (p.type === 'paradox_cube') {
         const size = (p.size || 10) * alpha;
         ctx.fillStyle = p.color || '#38bdf8';
@@ -9051,6 +10670,209 @@ export class GameRenderer {
 
       ctx.restore();
     }
+  }
+
+  private drawAcidPools(acidPools: any[], time: number) {
+    const ctx = this.ctx;
+    for (const pool of acidPools) {
+      if (!pool || pool.duration <= 0) continue;
+      const alpha = Math.min(1, pool.duration / 30);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      const px = pool.x;
+      const py = pool.y;
+      const pw = pool.width;
+      const ph = pool.height;
+
+      // 1. Caustic Outer Glow on Ground
+      const glowGrad = ctx.createRadialGradient(px + pw / 2, py + ph / 2, 10, px + pw / 2, py + ph / 2, pw * 0.6);
+      glowGrad.addColorStop(0, 'rgba(192, 132, 252, 0.6)');
+      glowGrad.addColorStop(0.5, 'rgba(147, 51, 234, 0.4)');
+      glowGrad.addColorStop(1, 'rgba(88, 28, 135, 0)');
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.ellipse(px + pw / 2, py + ph / 2, pw * 0.6, ph * 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. Liquid Acid Pool Base (Dark purple toxic sludge)
+      const baseGrad = ctx.createLinearGradient(px, py, px, py + ph);
+      baseGrad.addColorStop(0, 'rgba(168, 85, 247, 0.9)');
+      baseGrad.addColorStop(0.5, 'rgba(126, 34, 206, 0.95)');
+      baseGrad.addColorStop(1, 'rgba(88, 28, 135, 0.98)');
+      ctx.fillStyle = baseGrad;
+
+      // Dynamic undulating surface wave
+      ctx.beginPath();
+      ctx.moveTo(px, py + ph / 2);
+      const segments = 16;
+      for (let s = 0; s <= segments; s++) {
+        const sx = px + (s / segments) * pw;
+        const wave = Math.sin(time * 0.18 + s * 1.2) * 3 + Math.cos(time * 0.28 + s * 0.8) * 1.5;
+        const sy = py + wave;
+        ctx.lineTo(sx, sy);
+      }
+      ctx.lineTo(px + pw, py + ph);
+      ctx.lineTo(px, py + ph);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Glowing Caustic Surface Lip Line
+      ctx.strokeStyle = '#e9d5ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let s = 0; s <= segments; s++) {
+        const sx = px + (s / segments) * pw;
+        const wave = Math.sin(time * 0.18 + s * 1.2) * 3 + Math.cos(time * 0.28 + s * 0.8) * 1.5;
+        const sy = py + wave;
+        if (s === 0) ctx.moveTo(sx, sy);
+        else ctx.lineTo(sx, sy);
+      }
+      ctx.stroke();
+
+      // 4. Boiling Animated Bubbles on Pool Surface
+      const bubbleCount = 6;
+      for (let b = 0; b < bubbleCount; b++) {
+        const bPhase = (time * 0.12 + b * 1.3) % (Math.PI * 2);
+        const bx = px + 15 + ((b * 37 + (pool.id || 0) * 19) % (pw - 30));
+        const by = py - Math.sin(bPhase) * 6;
+        const br = 3 + Math.sin(bPhase) * 2.5;
+        if (br > 0.5) {
+          ctx.fillStyle = 'rgba(233, 213, 255, 0.85)';
+          ctx.strokeStyle = '#c084fc';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Specular Glint
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(bx - br * 0.3, by - br * 0.3, br * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 5. Rising Corrosive Toxic Steam Whistles
+      for (let w = 0; w < 3; w++) {
+        const steamProgress = (time * 0.08 + w * 0.33) % 1.0;
+        const sx = px + 25 + (w * (pw - 50)) / 2 + Math.sin(time * 0.15 + w) * 12;
+        const sy = py - steamProgress * 36;
+        const sAlpha = (1 - steamProgress) * 0.6;
+        ctx.fillStyle = `rgba(192, 132, 252, ${sAlpha})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 4 + steamProgress * 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+  }
+
+  private drawGravityDirectionalOverlay(axis: string, time: number, arenaWidth: number) {
+    if (axis === 'down') return;
+    const ctx = this.ctx;
+    ctx.save();
+
+    const arenaW = arenaWidth || 960;
+    const pulse = (Math.sin(time * 0.2) + 1) * 0.5;
+
+    // 1. Glowing Edge Bar on Destination Gravity Wall
+    if (axis === 'right') {
+      const rimGrad = ctx.createLinearGradient(arenaW - 40, 0, arenaW, 0);
+      rimGrad.addColorStop(0, 'rgba(16, 185, 129, 0)');
+      rimGrad.addColorStop(1, 'rgba(52, 211, 153, 0.7)');
+      ctx.fillStyle = rimGrad;
+      ctx.fillRect(arenaW - 40, 0, 40, 540);
+    } else if (axis === 'left') {
+      const rimGrad = ctx.createLinearGradient(0, 0, 40, 0);
+      rimGrad.addColorStop(0, 'rgba(52, 211, 153, 0.7)');
+      rimGrad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = rimGrad;
+      ctx.fillRect(0, 0, 40, 540);
+    } else if (axis === 'up') {
+      const rimGrad = ctx.createLinearGradient(0, 0, 0, 40);
+      rimGrad.addColorStop(0, 'rgba(52, 211, 153, 0.7)');
+      rimGrad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      ctx.fillStyle = rimGrad;
+      ctx.fillRect(0, 0, arenaW, 40);
+    }
+
+    // 2. Animated Flowing Gravitational Chevron Arrows across the arena
+    const numCols = Math.ceil(arenaW / 180);
+    const numRows = 3;
+    const arrowFlow = (time * 6) % 180;
+
+    for (let c = 0; c < numCols; c++) {
+      for (let r = 0; r < numRows; r++) {
+        let ax = c * 180 + 90;
+        let ay = r * 140 + 80;
+
+        if (axis === 'right') {
+          ax = ((c * 180 + arrowFlow) % arenaW);
+        } else if (axis === 'left') {
+          ax = ((c * 180 - arrowFlow + arenaW * 2) % arenaW);
+        } else if (axis === 'up') {
+          ay = ((r * 140 - (time * 5) % 420 + 540) % 420) + 40;
+        }
+
+        ctx.save();
+        ctx.translate(ax, ay);
+
+        if (axis === 'right') {
+          ctx.rotate(0);
+        } else if (axis === 'left') {
+          ctx.rotate(Math.PI);
+        } else if (axis === 'up') {
+          ctx.rotate(-Math.PI / 2);
+        }
+
+        ctx.strokeStyle = `rgba(52, 211, 153, ${0.4 + pulse * 0.35})`;
+        ctx.fillStyle = `rgba(16, 185, 129, ${0.3 + pulse * 0.25})`;
+        ctx.lineWidth = 3.5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        // Tri-chevron arrow head
+        for (let ch = 0; ch < 2; ch++) {
+          const offsetX = -ch * 16;
+          ctx.beginPath();
+          ctx.moveTo(offsetX - 14, -14);
+          ctx.lineTo(offsetX + 10, 0);
+          ctx.lineTo(offsetX - 14, 14);
+          ctx.stroke();
+        }
+
+        // Speed line tail
+        ctx.beginPath();
+        ctx.moveTo(-45, 0);
+        ctx.lineTo(-20, 0);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
+
+    // 3. Top Center HUD Banner Indicator
+    ctx.save();
+    const bannerX = this.cameraX + 480;
+    ctx.fillStyle = 'rgba(6, 78, 59, 0.75)';
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(bannerX - 170, 16, 340, 32, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.font = '900 13px sans-serif';
+    ctx.fillStyle = '#34d399';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`⚡ C-MOON GRAVITY AXIS: [ ${axis.toUpperCase()} ] ⚡`, bannerX, 32);
+    ctx.restore();
+
+    ctx.restore();
   }
 
   private renderBarrageArmParticle(
@@ -9349,6 +11171,1966 @@ export class GameRenderer {
       ctx.arc(mx + 9, my - 3, 4, 0, Math.PI * 2);
       ctx.arc(mx + 14, my - 1, 3, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // ==========================================
+  // ARABIAN FAT & THE SUN RENDERING PIPELINE
+  // ==========================================
+
+  public drawTheSunStand(f: Fighter, time: number) {
+    const ctx = this.ctx;
+    const sunX = f.sunX || this.ctx.canvas.width / 2;
+    const sunY = f.sunY || 75;
+    const temp = Math.min(100, Math.max(0, f.sunTemperature || 0));
+    const baseRadius = 38 + (temp / 100) * 16;
+
+    ctx.save();
+
+    // 1. Environmental Heat Distortions / Radiation Waves radiating downward
+    ctx.strokeStyle = `rgba(249, 115, 22, ${0.15 + (temp / 100) * 0.35})`;
+    ctx.lineWidth = 2.5;
+    for (let w = 0; w < 4; w++) {
+      const waveRadius = baseRadius + 22 + w * 28 + (time * 1.5) % 30;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, waveRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 2. Rotating Prominence Corona Rays
+    const numRays = 16;
+    ctx.strokeStyle = `rgba(239, 68, 68, ${0.6 + (temp / 100) * 0.4})`;
+    ctx.lineWidth = 3.5;
+    for (let r = 0; r < numRays; r++) {
+      const angle = (r / numRays) * Math.PI * 2 + time * 0.04;
+      const rayLen = baseRadius + 14 + Math.sin(time * 0.2 + r) * 8 + (temp / 100) * 12;
+      ctx.beginPath();
+      ctx.moveTo(sunX + Math.cos(angle) * (baseRadius - 4), sunY + Math.sin(angle) * (baseRadius - 4));
+      ctx.lineTo(sunX + Math.cos(angle) * rayLen, sunY + Math.sin(angle) * rayLen);
+      ctx.stroke();
+    }
+
+    // 3. The Sun Glowing Plasma Body
+    ctx.shadowColor = '#f97316';
+    ctx.shadowBlur = 35 + (temp / 100) * 25;
+
+    const sunGrad = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, baseRadius);
+    sunGrad.addColorStop(0, '#ffffff');
+    sunGrad.addColorStop(0.25, '#fef08a');
+    sunGrad.addColorStop(0.65, '#f97316');
+    sunGrad.addColorStop(0.9, '#ef4444');
+    sunGrad.addColorStop(1, 'rgba(185, 28, 28, 0.85)');
+
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, baseRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Stand Eyes / Features of The Sun (JoJo Part 3)
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    // Left eye slit
+    ctx.ellipse(sunX - baseRadius * 0.35, sunY - baseRadius * 0.1, 7, 3, Math.PI * 0.15, 0, Math.PI * 2);
+    // Right eye slit
+    ctx.ellipse(sunX + baseRadius * 0.35, sunY - baseRadius * 0.1, 7, 3, -Math.PI * 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Overhead Stand Label
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '900 11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`☀️ THE SUN [${Math.round(temp)}°C]`, sunX, sunY - baseRadius - 12);
+
+    ctx.restore();
+  }
+
+  public drawMirrorObject(f: Fighter, time: number) {
+    if (!f.mirrorObject) return;
+    const ctx = this.ctx;
+    const m = f.mirrorObject;
+
+    ctx.save();
+
+    if (m.isDestroyed) {
+      // Shattered Broken Mirror Glass Shards on ground
+      ctx.fillStyle = '#64748b';
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 7; i++) {
+        const sx = m.x + (i * 12);
+        const sy = m.y + m.height - 8 + (i % 2) * 4;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + 8, sy - 6);
+        ctx.lineTo(sx + 14, sy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '900 10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('🪞 [SHATTERED MIRROR]', m.x + m.width / 2, m.y - 12);
+      ctx.restore();
+      return;
+    }
+
+    // 1. Chrome Mirror Stand Support Legs & Frame
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(m.x, m.y, m.width, m.height);
+
+    // Support strut legs
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(m.x - 6, m.y + m.height);
+    ctx.lineTo(m.x + 8, m.y + m.height - 14);
+    ctx.moveTo(m.x + m.width + 6, m.y + m.height);
+    ctx.lineTo(m.x + m.width - 8, m.y + m.height - 14);
+    ctx.stroke();
+
+    // 2. Reflective Glass Mirror Surface with Desert Horizon Mirage Gradient
+    const glassGrad = ctx.createLinearGradient(m.x, m.y, m.x + m.width, m.y + m.height);
+    glassGrad.addColorStop(0, '#fdba74');
+    glassGrad.addColorStop(0.4, '#fed7aa');
+    glassGrad.addColorStop(0.7, '#38bdf8');
+    glassGrad.addColorStop(1, '#0284c7');
+
+    ctx.fillStyle = glassGrad;
+    ctx.fillRect(m.x + 2, m.y + 2, m.width - 4, m.height - 4);
+
+    // 3. Shimmering Light Glint Line (Camouflage indicator)
+    const glintProgress = ((m.glintTimer || 0) % 120) / 120;
+    const glintX = m.x - 20 + glintProgress * (m.width + 40);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(glintX, m.y + m.height);
+    ctx.lineTo(glintX + 18, m.y);
+    ctx.stroke();
+
+    // 4. Hit Flash when struck
+    if (m.hitFlashTimer && m.hitFlashTimer > 0) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.fillRect(m.x, m.y, m.width, m.height);
+    }
+
+    // 5. Glass Crack Fractures if damaged
+    const dmgPct = (m.maxHp - m.hp) / m.maxHp;
+    if (dmgPct > 0.15) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      const numCracks = Math.floor(dmgPct * 6);
+      for (let c = 0; c < numCracks; c++) {
+        const cx = m.x + (c * 14) + 6;
+        const cy = m.y + (c * 16) + 8;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + 10, cy + 8);
+        ctx.lineTo(cx + 6, cy + 18);
+        ctx.stroke();
+      }
+    }
+
+    // 6. Floating Overhead Camouflage & HP Bar
+    const hpPct = Math.max(0, m.hp / m.maxHp);
+    const barW = 60;
+    const barH = 5;
+    const barX = m.x + (m.width - barW) / 2;
+    const barY = m.y - 18;
+
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+
+    ctx.fillStyle = hpPct > 0.5 ? '#38bdf8' : hpPct > 0.25 ? '#f59e0b' : '#ef4444';
+    ctx.fillRect(barX, barY, barW * hpPct, barH);
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '900 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`🪞 MIRROR: ${Math.ceil(m.hp)}/${m.maxHp}`, m.x + m.width / 2, barY - 4);
+
+    ctx.restore();
+  }
+
+  public drawArabianFat(
+    ctx: CanvasRenderingContext2D,
+    fighter: Fighter,
+    headX: number,
+    headY: number,
+    headRadius: number,
+    neckX: number,
+    neckY: number,
+    hipX: number,
+    hipY: number,
+    leftHandX: number,
+    leftHandY: number,
+    rightHandX: number,
+    rightHandY: number,
+    direction: number,
+    time: number
+  ) {
+    const isHiding = !!fighter.isHidingBehindMirror;
+    const isExposed = fighter.action === 'sun_exposed_panic';
+
+    ctx.save();
+
+    // If hiding behind mirror, Arabian Fat is rendered semi-transparent with a mirage blur
+    if (isHiding) {
+      ctx.globalAlpha *= 0.38;
+    }
+
+    // 1. Arabian Keffiyeh / Shemagh Headdress (White draped cloth with red pattern & black Agal cord)
+    ctx.fillStyle = '#f8fafc';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.5;
+
+    // Main Keffiyeh Dome
+    ctx.beginPath();
+    ctx.arc(headX, headY - 2, headRadius + 3, Math.PI * 0.9, Math.PI * 2.1);
+    ctx.fill();
+    ctx.stroke();
+
+    // Draped Scarf Sides falling over neck/shoulders
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(headX - (headRadius + 3) * direction, headY - 2);
+    ctx.quadraticCurveTo(headX - (headRadius + 8) * direction, neckY + 12, headX - (headRadius + 2) * direction, neckY + 22);
+    ctx.lineTo(headX + 2 * direction, neckY + 14);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Black Agal Headband Cord
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(headX - headRadius - 3, headY - 8, headRadius * 2 + 6, 4);
+
+    // 2. Face: Sunglasses / Smug Expression or Panicked Anime Scream
+    if (isExposed) {
+      // Panicked Face: Big screaming open mouth and sweat droplets flying
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.ellipse(headX + 4 * direction, headY + 3, 5, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Panicked wide anime eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(headX + 3 * direction, headY - 3, 3, 0, Math.PI * 2);
+      ctx.arc(headX - 3 * direction, headY - 3, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.arc(headX + 3 * direction, headY - 3, 1.2, 0, Math.PI * 2);
+      ctx.arc(headX - 3 * direction, headY - 3, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Flying sweat drops 💧
+      ctx.fillStyle = '#38bdf8';
+      const sweatY = headY - 12 + Math.sin(time * 0.3) * 3;
+      ctx.beginPath();
+      ctx.arc(headX + 12 * direction, sweatY, 3, 0, Math.PI * 2);
+      ctx.arc(headX - 10 * direction, sweatY - 2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Cool Sunglasses with Gold Tint
+      ctx.fillStyle = '#020617';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(headX + 1 * direction, headY - 4, 6 * direction, 4);
+      ctx.rect(headX - 5 * direction, headY - 4, 5 * direction, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Smug smile
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(headX + 3 * direction, headY + 4, 3.5, 0, Math.PI * 0.8);
+      ctx.stroke();
+    }
+
+    // 3. Arabian Thobe / Desert Robe (Plump Arabic Thobe with Gold Trim)
+    ctx.fillStyle = '#fef3c7'; // Desert sand ivory robe
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(neckX - 10, neckY);
+    ctx.lineTo(neckX + 10, neckY);
+    ctx.lineTo(hipX + 18, hipY + 16);
+    ctx.lineTo(hipX - 18, hipY + 16);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Crimson / Amber Sash Belt
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(hipX - 14, hipY - 2, 28, 5);
+
+    // Pointed Desert Slippers
+    ctx.fillStyle = '#b45309';
+    ctx.beginPath();
+    ctx.ellipse(hipX + 10 * direction, hipY + 42, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(hipX - 10 * direction, hipY + 42, 7, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // --- GEORGE THE THOROUGHBRED (MICHAEL JUNISTER'S CHAMPION STALLION) ---
+  public drawGeorgeHorse(
+    ctx: CanvasRenderingContext2D,
+    horseX: number,
+    horseY: number,
+    direction: number,
+    time: number,
+    isWalking: boolean,
+    isGalloping: boolean,
+    isOverdrive: boolean,
+    isRearing: boolean = false
+  ) {
+    ctx.save();
+
+    // Determine gait timings & body dynamics
+    const walkCycle = (time * 0.22) % (Math.PI * 2);
+    const gallopCycle = (time * 0.42) % (Math.PI * 2);
+    const idleCycle = time * 0.08;
+
+    let bodyPitch = 0;
+    let bodyBob = 0;
+    let shadowScale = 1.0;
+
+    if (isRearing) {
+      bodyPitch = -0.48; // Heroic 28-degree rear on hind legs
+      bodyBob = -18;
+      shadowScale = 0.72;
+    } else if (isGalloping) {
+      bodyPitch = Math.sin(gallopCycle) * 0.12;
+      bodyBob = Math.sin(gallopCycle * 2) * 4.8;
+      shadowScale = 1.05 + Math.cos(gallopCycle) * 0.15;
+    } else if (isWalking) {
+      bodyPitch = Math.sin(walkCycle) * 0.04;
+      bodyBob = Math.sin(walkCycle * 2) * 2.2;
+      shadowScale = 1.0 + Math.sin(walkCycle * 2) * 0.06;
+    } else {
+      // Idle rhythmic breathing
+      bodyBob = Math.sin(idleCycle) * 1.5;
+      shadowScale = 1.0;
+    }
+
+    const gX = horseX;
+    const gY = horseY + bodyBob;
+
+    // 1. Soft Dynamic Ground Shadow (Unflipped arena ground space)
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.beginPath();
+    ctx.ellipse(gX, horseY + 38, 52 * shadowScale, 11 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Translate and Scale to Horse Symmetrical Local Space
+    // (+X is ALWAYS forward towards head, -X is ALWAYS backward towards tail)
+    ctx.save();
+    ctx.translate(gX, gY);
+    ctx.scale(direction, 1);
+
+    // Natural Articulated Equine Leg Kinematics (Shoulder/Hip -> Knee/Hock -> Pastern -> Hoof)
+    const drawArticulatedLeg = (
+      rootX: number,
+      rootY: number,
+      phase: number,
+      isFront: boolean,
+      isNearSide: boolean
+    ) => {
+      ctx.save();
+      ctx.translate(rootX, rootY);
+
+      let upperAngle = 0;
+      let lowerAngle = 0;
+      let hoofAngle = 0;
+
+      if (isRearing) {
+        if (isFront) {
+          // Front legs lifted high in the air, pawing with bent knees
+          upperAngle = -0.85 + (isNearSide ? -0.15 : 0.12) + Math.sin(time * 0.35 + (isNearSide ? 0 : 1.2)) * 0.15;
+          lowerAngle = 1.05 + Math.sin(time * 0.35 + (isNearSide ? 0 : 1.2)) * 0.2;
+          hoofAngle = 0.35;
+        } else {
+          // Hind legs braced on the ground supporting the entire weight
+          upperAngle = 0.38 + (isNearSide ? 0.06 : -0.06);
+          lowerAngle = -0.28;
+          hoofAngle = 0.18;
+        }
+      } else if (isGalloping) {
+        const sinP = Math.sin(phase);
+        const cosP = Math.cos(phase);
+
+        if (isFront) {
+          // Front leg reaches forward during extension (+sinP), folds knee backward when lifting/suspension (-sinP)
+          upperAngle = sinP * 0.65;
+          lowerAngle = sinP < 0 ? -Math.abs(sinP) * 0.95 : sinP * 0.15;
+          hoofAngle = cosP * 0.35;
+        } else {
+          // Hind leg drives back hard (+sinP pushes backward in -X), coils forward under belly (-sinP)
+          upperAngle = -sinP * 0.62;
+          lowerAngle = sinP > 0 ? sinP * 0.95 : -Math.abs(sinP) * 0.25;
+          hoofAngle = -cosP * 0.35;
+        }
+      } else if (isWalking) {
+        // True 4-beat lateral equine walking gait
+        const sinP = Math.sin(phase);
+        const cosP = Math.cos(phase);
+
+        if (isFront) {
+          // Front leg swings forward
+          upperAngle = sinP * 0.36;
+          // Knee flexes back when leg lifts to swing forward
+          lowerAngle = sinP < 0 ? -Math.abs(sinP) * 0.55 : 0;
+          hoofAngle = cosP * 0.20;
+        } else {
+          // Hind leg steps forward
+          upperAngle = -sinP * 0.38;
+          // Hock flexes forward
+          lowerAngle = sinP > 0 ? sinP * 0.50 : 0;
+          hoofAngle = -cosP * 0.20;
+        }
+      } else {
+        // Idle noble stance
+        if (isFront) {
+          upperAngle = isNearSide ? 0.04 : -0.04;
+          lowerAngle = isNearSide ? -0.02 : 0.02;
+          hoofAngle = 0;
+        } else {
+          upperAngle = isNearSide ? -0.08 : 0.06;
+          lowerAngle = isNearSide ? 0.10 : -0.04;
+          hoofAngle = 0;
+        }
+      }
+
+      // Upper Segment (Shoulder / Gaskin)
+      ctx.rotate(upperAngle);
+      const upperLen = isFront ? 22 : 24;
+      const legColor = isNearSide ? '#451a03' : '#220b02';
+      const strokeColor = isNearSide ? '#78350f' : '#3b1204';
+
+      ctx.fillStyle = legColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 1.6;
+
+      ctx.beginPath();
+      ctx.moveTo(-5, 0);
+      ctx.quadraticCurveTo(2, upperLen * 0.5, 4, upperLen);
+      ctx.lineTo(-4, upperLen);
+      ctx.quadraticCurveTo(-3, upperLen * 0.5, -5, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Middle Joint (Carpus Knee / Tarsus Hock)
+      ctx.translate(0, upperLen);
+      ctx.rotate(lowerAngle);
+
+      ctx.fillStyle = isNearSide ? '#2b0f02' : '#140601';
+      ctx.beginPath();
+      ctx.arc(0, 0, 3.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lower Segment (Cannon Bone)
+      const lowerLen = isFront ? 20 : 19;
+      ctx.fillStyle = legColor;
+      ctx.strokeStyle = strokeColor;
+      ctx.beginPath();
+      ctx.moveTo(-3, 0);
+      ctx.lineTo(3, 0);
+      ctx.lineTo(2.4, lowerLen);
+      ctx.lineTo(-2.4, lowerLen);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Ankle / Fetlock & Hoof
+      ctx.translate(0, lowerLen);
+      ctx.rotate(hoofAngle);
+
+      // White Sock or Dark Pastern Marking
+      ctx.fillStyle = isNearSide ? '#f1f5f9' : '#3b1204';
+      ctx.fillRect(-2.8, 0, 5.6, 4);
+
+      // Solid Iron Horseshoe & Glossy Black Hoof
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(-3.8, 4);
+      ctx.lineTo(3.8, 4);
+      ctx.lineTo(5.5, 9);
+      ctx.lineTo(-4.8, 9);
+      ctx.closePath();
+      ctx.fill();
+
+      // Horseshoe Rim
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-4.8, 8.5, 10.3, 1.8);
+
+      ctx.restore();
+    };
+
+    // 3. Render Far Side Legs (Back depth layer)
+    // Hind leg is at -X, front leg is at +X
+    let farFrontPhase = 0;
+    let farHindPhase = 0;
+    let nearFrontPhase = 0;
+    let nearHindPhase = 0;
+
+    if (isGalloping) {
+      nearFrontPhase = gallopCycle;
+      farFrontPhase = gallopCycle + 0.85;
+      nearHindPhase = gallopCycle + 2.15;
+      farHindPhase = gallopCycle + 3.0;
+    } else if (isWalking) {
+      farHindPhase = walkCycle;
+      farFrontPhase = walkCycle + Math.PI * 0.5;
+      nearHindPhase = walkCycle + Math.PI;
+      nearFrontPhase = walkCycle + Math.PI * 1.5;
+    }
+
+    // Far Hind Leg & Far Front Leg
+    drawArticulatedLeg(-22, 10, farHindPhase, false, false);
+    drawArticulatedLeg(26, 12, farFrontPhase, true, false);
+
+    // 4. Thoroughbred Torso Body (Rotates with bodyPitch)
+    ctx.save();
+    ctx.rotate(bodyPitch);
+
+    const coatGrad = ctx.createLinearGradient(-40, -22, 40, 22);
+    coatGrad.addColorStop(0, '#78350f');
+    coatGrad.addColorStop(0.35, '#591c04');
+    coatGrad.addColorStop(0.7, '#451a03');
+    coatGrad.addColorStop(1, '#270e02');
+    ctx.fillStyle = coatGrad;
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 2.2;
+
+    // Muscular Thoroughbred Barrel & Flank
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 39, 23, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Subtle muscle contour highlight
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.18)';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.arc(12, -4, 18, Math.PI * 0.7, Math.PI * 1.3);
+    ctx.stroke();
+
+    // No. 1 Championship Saddlecloth (Emerald Green & Gold Embroidery)
+    ctx.fillStyle = '#065f46';
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-17, -16, 34, 23, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    // Gold Trim & "NO. 1" Champion Stencil
+    ctx.fillStyle = '#fef08a';
+    ctx.font = '900 8.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NO.1', 0, -1.5);
+
+    // Polished Black Leather Equestrian Saddle
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.ellipse(0, -16, 13, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Leather Girth & Stirrup Iron
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(0, -12);
+    const stirrupSway = isGalloping ? Math.sin(gallopCycle) * 2.5 : (isWalking ? Math.sin(walkCycle) * 1.2 : 0);
+    ctx.lineTo(stirrupSway, 11);
+    ctx.stroke();
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(stirrupSway, 12, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Dynamic Arched Neck & Head
+    const neckBaseX = 24;
+    const neckBaseY = -10;
+    const neckPitch = isRearing 
+      ? -0.28 
+      : (0.10 + (isGalloping ? Math.cos(gallopCycle) * 0.10 : (isWalking ? Math.sin(walkCycle) * 0.05 : 0)));
+
+    ctx.save();
+    ctx.translate(neckBaseX, neckBaseY);
+    ctx.rotate(neckPitch);
+
+    ctx.fillStyle = coatGrad;
+    ctx.strokeStyle = '#78350f';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-11, 9);
+    ctx.quadraticCurveTo(7, -14, 17, -29);
+    ctx.lineTo(3, -29);
+    ctx.quadraticCurveTo(-9, -9, -11, 9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Flowing Natural Midnight Black Mane (Wind Wave Layers streaming back toward -X)
+    const maneCycle = isGalloping ? (time * 0.45) : (isWalking ? (time * 0.25) : (time * 0.12));
+    ctx.fillStyle = '#090d16';
+    for (let m = 0; m < 6; m++) {
+      const maneWave = Math.sin(maneCycle + m * 0.6) * (isGalloping ? 6 : 2.5);
+      ctx.beginPath();
+      const mx = -7 - m * 3.5;
+      const my = -7 - m * 3.8;
+      ctx.moveTo(mx, my);
+      ctx.quadraticCurveTo(
+        mx - (12 + m * 2.5),
+        my - 6 + maneWave,
+        mx - (18 + m * 3.5),
+        my - 2 + maneWave * 1.2
+      );
+      ctx.lineTo(mx + 2, my - 6);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Horse Head
+    const hX = 8;
+    const hY = -32;
+
+    ctx.save();
+    ctx.translate(hX, hY);
+    const headNod = isRearing ? 0.15 : (isGalloping ? Math.sin(gallopCycle) * 0.07 : (isWalking ? Math.sin(walkCycle) * 0.04 : 0));
+    ctx.rotate(headNod);
+
+    // Cheek & Jaw
+    ctx.fillStyle = '#451a03';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 7.5, 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Muzzle & Nostrils
+    ctx.fillStyle = '#270e02';
+    ctx.beginPath();
+    ctx.ellipse(7.5, 3.2, 5.5, 4.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    ctx.arc(10, 4, 1.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Alert Pricked Ears
+    ctx.fillStyle = '#451a03';
+    ctx.strokeStyle = '#270e02';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-2, -5);
+    ctx.lineTo(-3.5, -15);
+    ctx.lineTo(2.5, -7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Sharp Determined Thoroughbred Eye
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(1.2, -3.2, 3, 3);
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(2.2, -3.2, 1.8, 3);
+
+    // Championship Leather Bridle & Gold Buckles
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(7.5, 0);
+    ctx.lineTo(-2, -3);
+    ctx.lineTo(-3, -11);
+    ctx.stroke();
+
+    // Steel Snaffle Bit
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.arc(5.5, 3, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore(); // Head
+    ctx.restore(); // Neck
+
+    // 6. Voluminous Flowing Tail (Streaming back to -X)
+    const tailCycle = isGalloping ? (time * 0.35) : (isWalking ? (time * 0.22) : (time * 0.12));
+    const tailWave1 = Math.sin(tailCycle) * (isGalloping ? 12 : (isWalking ? 6 : 3.5));
+    const tailWave2 = Math.cos(tailCycle * 0.8) * (isGalloping ? 9 : (isWalking ? 4.5 : 2.5));
+
+    ctx.strokeStyle = '#090d16';
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = 'round';
+
+    // Tail Strand 1
+    ctx.beginPath();
+    ctx.moveTo(-35, -5);
+    ctx.bezierCurveTo(
+      -50, -2 + tailWave1,
+      -60, 10 - tailWave2,
+      -70, 24 + tailWave1
+    );
+    ctx.stroke();
+
+    // Tail Strand 2 (Fuller body)
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.moveTo(-36, -3);
+    ctx.bezierCurveTo(
+      -48, 4 + tailWave2,
+      -58, 16 + tailWave1,
+      -68, 30 + tailWave2
+    );
+    ctx.stroke();
+
+    ctx.restore(); // Torso
+
+    // 7. Render Near Side Legs (Front depth layer)
+    drawArticulatedLeg(-26, 10, nearHindPhase, false, true);
+    drawArticulatedLeg(22, 12, nearFrontPhase, true, true);
+
+    ctx.restore(); // Local horse space
+    ctx.restore(); // Main George save
+  }
+
+  public drawMichaelJunister(
+    ctx: CanvasRenderingContext2D,
+    fighter: Fighter,
+    headX: number,
+    headY: number,
+    headRadius: number,
+    neckX: number,
+    neckY: number,
+    hipX: number,
+    hipY: number,
+    leftHandX: number,
+    leftHandY: number,
+    rightHandX: number,
+    rightHandY: number,
+    direction: number,
+    time: number
+  ) {
+    ctx.save();
+    const isOverdrive = (fighter.michaelOverdriveTimer || 0) > 0;
+    const isAttacking = fighter.action.startsWith('michael_');
+    const isMounted = !!fighter.isGeorgeMounted;
+    const isMounting = (fighter.georgeMountingTimer || 0) > 0;
+    const isUnhorsed = (fighter.georgeFallOffTimer || 0) > 0;
+    const isPendingRemount = !!fighter.georgePendingRemount;
+
+    // Render George the Thoroughbred Horse when Mounted, Mounting, Unhorsed, or Waiting to Remount!
+    if (isMounted || isMounting || isUnhorsed || isPendingRemount) {
+      let horseX = 0;
+      if ((isMounting || isUnhorsed || isPendingRemount) && fighter.georgeX !== undefined) {
+        horseX = (fighter.georgeX - (fighter.x + fighter.width / 2)) * direction;
+      }
+      const horseY = fighter.height - 38;
+      const isMoving = Math.abs(fighter.vx) > 0.25 || fighter.action === 'walk';
+      const isFastGallop = Math.abs(fighter.vx) > 2.0;
+      const isMovingAttack = fighter.action === 'michael_palm_thrust' || fighter.action === 'michael_kinetic_barrage' || fighter.action === 'michael_axe_kick' || fighter.action === 'michael_ultimate';
+      const isGalloping = isFastGallop || isMovingAttack || isMounting;
+      const isWalking = (isMoving && !isGalloping) || (isPendingRemount && !isGalloping);
+      const isRearing = fighter.action === 'michael_counter_stance' || isUnhorsed || (fighter.georgeState === 'rearing');
+      this.drawGeorgeHorse(ctx, horseX, horseY, direction, time, isWalking, isGalloping, isOverdrive, isRearing);
+    }
+
+    // 0. Fair Handsome Face & Sculpted Athletic Jaw (No dark / black face)
+    ctx.fillStyle = '#fed7aa'; // Fair warm human skin tone
+    ctx.strokeStyle = '#f97316';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sculpted jaw and cheek shading
+    ctx.fillStyle = '#fde68a';
+    ctx.beginPath();
+    ctx.arc(headX, headY, headRadius - 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Confident Athletic Smirk & Jaw Contour
+    ctx.strokeStyle = '#c2410c';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(headX - 1 * direction, headY + 3.5);
+    ctx.quadraticCurveTo(headX + 2 * direction, headY + 4.5, headX + 4.5 * direction, headY + 2.5);
+    ctx.stroke();
+
+    // 1. Spiky Anime Martial Arts Hairstyle
+    ctx.fillStyle = '#0f172a'; // Obsidian midnight base
+    ctx.beginPath();
+    // Front and crown spikes
+    ctx.moveTo(headX - 10 * direction, headY - 4);
+    ctx.lineTo(headX - 14 * direction, headY - 14);
+    ctx.lineTo(headX - 6 * direction, headY - 12);
+    ctx.lineTo(headX - 8 * direction, headY - 20);
+    ctx.lineTo(headX, headY - 14);
+    ctx.lineTo(headX + 6 * direction, headY - 22);
+    ctx.lineTo(headX + 10 * direction, headY - 12);
+    ctx.lineTo(headX + 15 * direction, headY - 16);
+    ctx.lineTo(headX + 13 * direction, headY - 4);
+    ctx.lineTo(headX + 8 * direction, headY + 3);
+    ctx.lineTo(headX - 4 * direction, headY + 3);
+    ctx.closePath();
+    ctx.fill();
+
+    // Golden tipped kinetic hair highlights
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.moveTo(headX - 8 * direction, headY - 20);
+    ctx.lineTo(headX - 5 * direction, headY - 16);
+    ctx.lineTo(headX - 10 * direction, headY - 16);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(headX + 6 * direction, headY - 22);
+    ctx.lineTo(headX + 8 * direction, headY - 17);
+    ctx.lineTo(headX + 3 * direction, headY - 17);
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Polished Golden Forehead Guard / Headband
+    ctx.strokeStyle = '#eab308';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(headX, headY, headRadius + 1, -Math.PI * 0.85, -Math.PI * 0.15);
+    ctx.stroke();
+
+    // Metallic Gold Forehead Plate
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.roundRect(headX - 7 * direction, headY - 6, 14 * direction, 4, 1);
+    ctx.fill();
+
+    // Hat Price Geometric Emblem on Headband
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath();
+    ctx.arc(headX + direction * 2, headY - 4, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Fluttering Golden Ribbon Tails flowing backward
+    const ribbonWave = Math.sin(time * 0.25) * 5;
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(headX - direction * headRadius, headY - 4);
+    ctx.bezierCurveTo(
+      headX - direction * (headRadius + 8), headY - 3 + ribbonWave,
+      headX - direction * (headRadius + 16), headY - 6 - ribbonWave,
+      headX - direction * (headRadius + 24), headY - 1 + ribbonWave
+    );
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(headX - direction * headRadius, headY - 2);
+    ctx.bezierCurveTo(
+      headX - direction * (headRadius + 6), headY - 1 - ribbonWave,
+      headX - direction * (headRadius + 14), headY + 2 + ribbonWave,
+      headX - direction * (headRadius + 20), headY + 5 - ribbonWave
+    );
+    ctx.stroke();
+
+    // 3. Piercing Golden Martial Eyes
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(headX + 1 * direction, headY - 2, 4 * direction, 2.5);
+    ctx.fillStyle = '#facc15'; // Golden Iris
+    ctx.fillRect(headX + 2.5 * direction, headY - 2, 2 * direction, 2.5);
+    ctx.fillStyle = '#0f172a'; // Brow
+    ctx.fillRect(headX + 0.5 * direction, headY - 3.5, 5.5 * direction, 1.2);
+
+    // 4. Modern Sleeveless Obsidian Martial Arts Gi / Vest
+    ctx.fillStyle = '#090d16'; // Deep midnight obsidian fabric
+    ctx.strokeStyle = '#facc15'; // Gold trim
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(neckX - 7, neckY);
+    ctx.lineTo(neckX + 7, neckY);
+    ctx.lineTo(hipX + 11, hipY + 5);
+    ctx.lineTo(hipX - 11, hipY + 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Raised Collar
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(neckX - 8, neckY - 4, 3, 5);
+    ctx.fillRect(neckX + 5, neckY - 4, 3, 5);
+
+    // Gold Chest Emblem (Hat Price Kinetic Diamond)
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    const chestMidX = (neckX + hipX) * 0.5;
+    const chestMidY = (neckY + hipY) * 0.5;
+    ctx.moveTo(chestMidX, chestMidY - 4);
+    ctx.lineTo(chestMidX + 3.5, chestMidY);
+    ctx.lineTo(chestMidX, chestMidY + 4);
+    ctx.lineTo(chestMidX - 3.5, chestMidY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Layered Martial Sash / Belt
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(hipX - 9, hipY + 2, 18, 4);
+    ctx.fillStyle = '#facc15'; // Gold belt center knot
+    ctx.fillRect(hipX - 3, hipY + 1.5, 6, 5);
+
+    // Flowing Belt Tails
+    const beltWave = Math.sin(time * 0.2 + 1) * 4;
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(hipX - direction * 2, hipY + 6);
+    ctx.lineTo(hipX - direction * 6, hipY + 18 + beltWave);
+    ctx.stroke();
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(hipX + direction * 1, hipY + 6);
+    ctx.lineTo(hipX - direction * 3, hipY + 16 - beltWave);
+    ctx.stroke();
+
+    // 4.5. SIGNATURE FLOWING ATHLETIC SELENDANG (Silk Shawl / Scarf)
+    const selendangWave1 = Math.sin(time * 0.25) * 6;
+    const selendangWave2 = Math.cos(time * 0.2) * 5;
+    
+    // Emerald silk body of the selendang draped over shoulders
+    ctx.fillStyle = '#047857'; // Rich emerald green silk
+    ctx.strokeStyle = '#facc15'; // Gold embroidered trim
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(neckX - 9, neckY - 2);
+    ctx.quadraticCurveTo(neckX, neckY + 6, neckX + 9, neckY - 2);
+    ctx.lineTo(neckX + 8, neckY + 4);
+    ctx.quadraticCurveTo(neckX, neckY + 10, neckX - 8, neckY + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Long Billowing Selendang Tails trailing behind Michael in the wind
+    ctx.strokeStyle = '#047857';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(neckX - direction * 6, neckY + 2);
+    ctx.bezierCurveTo(
+      neckX - direction * 16, neckY + 6 + selendangWave1,
+      neckX - direction * 28, neckY - 2 - selendangWave2,
+      neckX - direction * 42, neckY + 16 + selendangWave1
+    );
+    ctx.stroke();
+
+    // Second tail
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(neckX - direction * 4, neckY + 4);
+    ctx.bezierCurveTo(
+      neckX - direction * 14, neckY + 10 - selendangWave2,
+      neckX - direction * 24, neckY + 18 + selendangWave1,
+      neckX - direction * 36, neckY + 26 - selendangWave2
+    );
+    ctx.stroke();
+
+    // Gold embroidered edge along both tails
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(neckX - direction * 6, neckY + 1);
+    ctx.bezierCurveTo(
+      neckX - direction * 16, neckY + 5 + selendangWave1,
+      neckX - direction * 28, neckY - 3 - selendangWave2,
+      neckX - direction * 42, neckY + 15 + selendangWave1
+    );
+    ctx.stroke();
+
+    // 5. Forearm Combat Wraps & Golden Kinetic Fists
+    // Left Hand Wraps
+    ctx.strokeStyle = '#eab308';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(leftHandX, leftHandY, 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Right Hand Wraps
+    ctx.beginPath();
+    ctx.arc(rightHandX, rightHandY, 3.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 6. Overdrive Blazing Kinetic Hands (Flames & Sparks)
+    if (isOverdrive || isAttacking) {
+      const hands = [
+        { x: leftHandX, y: leftHandY },
+        { x: rightHandX, y: rightHandY }
+      ];
+
+      for (const h of hands) {
+        // Glowing Golden Plasma Sphere
+        const fPulse = Math.sin(time * 0.4 + h.x) * 2;
+        const fRadius = (isOverdrive ? 11 : 7) + fPulse;
+        const handGrad = ctx.createRadialGradient(h.x, h.y, 2, h.x, h.y, fRadius);
+        handGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        handGrad.addColorStop(0.4, 'rgba(254, 240, 138, 0.85)');
+        handGrad.addColorStop(0.8, 'rgba(250, 204, 21, 0.6)');
+        handGrad.addColorStop(1, 'rgba(234, 179, 8, 0)');
+        ctx.fillStyle = handGrad;
+        ctx.beginPath();
+        ctx.arc(h.x, h.y, fRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dancing flame spikes
+        ctx.fillStyle = '#fef08a';
+        for (let s = 0; s < 3; s++) {
+          const sAngle = time * 0.3 + s * ((Math.PI * 2) / 3);
+          const spX = h.x + Math.cos(sAngle) * (fRadius * 0.8);
+          const spY = h.y + Math.sin(sAngle) * (fRadius * 0.8);
+          ctx.beginPath();
+          ctx.arc(spX, spY, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // 7. Gold Knee Guards & Combat Boots (On Foot vs Mounted)
+    if (isMounted) {
+      // Near-Side Riding Leg, Leather Stirrup, Boot, and Reins
+      const horseY = fighter.height - 38;
+      const walkCycle = (time * 0.22) % (Math.PI * 2);
+      const gallopCycle = (time * 0.42) % (Math.PI * 2);
+      const isMoving = Math.abs(fighter.vx) > 0.25 || fighter.action === 'walk';
+      const isFastGallop = Math.abs(fighter.vx) > 2.0;
+      const isMovingAttack = fighter.action === 'michael_palm_thrust' || fighter.action === 'michael_kinetic_barrage' || fighter.action === 'michael_axe_kick' || fighter.action === 'michael_ultimate';
+      const isGalloping = isFastGallop || isMovingAttack;
+      const isWalking = isMoving && !isGalloping;
+      const isRearing = fighter.action === 'michael_counter_stance';
+      const bodyBob = isRearing 
+        ? -18 
+        : (isGalloping 
+            ? Math.sin(gallopCycle * 2) * 4.8 
+            : (isWalking 
+                ? Math.sin(walkCycle * 2) * 2.2 
+                : Math.sin(time * 0.08) * 1.5));
+
+      const stirrupSway = isGalloping ? Math.sin(gallopCycle) * 2.5 : (isWalking ? Math.sin(walkCycle) * 1.2 : 0);
+      const stirrupX = stirrupSway * direction;
+      const stirrupY = horseY + bodyBob + 12;
+
+      // Stirrup leather hanging from under saddle to stirrup iron
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY + 8);
+      ctx.lineTo(stirrupX, stirrupY);
+      ctx.stroke();
+
+      // Michael's Near-Side Riding Leg (Thigh, Knee, Shin, Boot)
+      const legKneeX = hipX + (isRearing ? 4 : 14) * direction;
+      const legKneeY = hipY + 13;
+      const legFootX = stirrupX;
+      const legFootY = stirrupY;
+
+      // Dark athletic riding trousers with gold racing seam
+      ctx.strokeStyle = '#090d16';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY + 4);
+      ctx.lineTo(legKneeX, legKneeY);
+      ctx.lineTo(legFootX, legFootY);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY + 4);
+      ctx.lineTo(legKneeX, legKneeY);
+      ctx.lineTo(legFootX, legFootY);
+      ctx.stroke();
+
+      // Sculpted gold knee protector
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.ellipse(legKneeX, legKneeY, 4, 5, direction * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Polished riding boot
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.ellipse(legFootX, legFootY, 5, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Steel stirrup iron
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(legFootX, legFootY + 1, 4.5, 0, Math.PI);
+      ctx.stroke();
+
+      // Leather Reins connecting bit to hands
+      const bitX = 34 * direction;
+      const bitY = horseY + bodyBob - 32;
+      ctx.strokeStyle = '#ca8a04';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(bitX, bitY);
+      ctx.quadraticCurveTo((bitX + rightHandX) * 0.5, Math.min(bitY, rightHandY) + 6, rightHandX, rightHandY);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.ellipse(hipX - 6 * direction, hipY + 22, 3, 4.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(hipX + 6 * direction, hipY + 22, 3, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 8. DEDICATED IN-ARENA KINETIC MOMENTUM METER (Floating HUD above Michael)
+    const kMeter = Math.min(100, Math.max(0, fighter.michaelKineticMeter || 0));
+    const kStacks = fighter.michaelKineticStacks || 0;
+    const barWidth = 46;
+    const barHeight = 4.5;
+    const barX = headX - barWidth / 2;
+    const barY = headY - headRadius - 28;
+
+    // Background pill
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = isOverdrive ? '#fef08a' : '#eab308';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(barX - 3, barY - 9, barWidth + 6, barHeight + 13, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    // Text Label & Stacks
+    ctx.fillStyle = isOverdrive ? '#fef08a' : '#facc15';
+    ctx.font = 'bold 6.5px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`⚡ KINETIC: ${Math.round(kMeter)}% (${kStacks}/5)`, headX, barY - 2);
+
+    // Track
+    ctx.fillStyle = '#090d16';
+    ctx.fillRect(barX, barY + 0.5, barWidth, barHeight);
+
+    // Fill
+    const fillW = (kMeter / 100) * barWidth;
+    if (fillW > 0) {
+      const kGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
+      kGrad.addColorStop(0, '#f59e0b');
+      kGrad.addColorStop(0.7, '#facc15');
+      kGrad.addColorStop(1, isOverdrive ? '#ffffff' : '#fef08a');
+      ctx.fillStyle = kGrad;
+      ctx.fillRect(barX, barY + 0.5, fillW, barHeight);
+    }
+
+    // Stack Divider Lines (5 segments)
+    ctx.strokeStyle = '#020617';
+    ctx.lineWidth = 1;
+    for (let s = 1; s < 5; s++) {
+      const sx = barX + (barWidth / 5) * s;
+      ctx.beginPath();
+      ctx.moveTo(sx, barY + 0.5);
+      ctx.lineTo(sx, barY + 0.5 + barHeight);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // 16. WALLY WABLE / PERSTEIN (GHOST: WABLE THE METAL CUTTER)
+  // =========================================================================
+  public drawPerstein(
+    ctx: CanvasRenderingContext2D,
+    fighter: Fighter,
+    headX: number,
+    headY: number,
+    headRadius: number,
+    neckX: number,
+    neckY: number,
+    hipX: number,
+    hipY: number,
+    leftHandX: number,
+    leftHandY: number,
+    rightHandX: number,
+    rightHandY: number,
+    direction: number,
+    time: number
+  ) {
+    ctx.save();
+    const isDeflecting = (fighter.persteinDeflectionTimer || 0) > 0;
+
+    // 0. Head & Polite Gentleman Complexion (Wally Wable, 27 yo, Vancouver)
+    ctx.fillStyle = '#fce7d2'; // Fair, clean gentleman complexion
+    ctx.strokeStyle = '#e2a878';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sleek, Perfectly Groomed Side-Parted Hair (Dark Slate Brown)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(headX - 11 * direction, headY + 1);
+    ctx.lineTo(headX - 12 * direction, headY - 8);
+    ctx.quadraticCurveTo(headX - 4 * direction, headY - 14, headX + 6 * direction, headY - 11);
+    ctx.lineTo(headX + 11 * direction, headY - 4);
+    ctx.lineTo(headX + 10 * direction, headY + 3);
+    ctx.lineTo(headX + 6 * direction, headY - 3);
+    ctx.lineTo(headX - 6 * direction, headY - 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Elegant Thin-Rimmed Rectangular Glasses
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(headX + 0 * direction, headY - 3, 5 * direction, 4);
+    ctx.strokeRect(headX + 6 * direction, headY - 3, 4.5 * direction, 4);
+    // Glasses bridge
+    ctx.beginPath();
+    ctx.moveTo(headX + 5 * direction, headY - 1);
+    ctx.lineTo(headX + 6 * direction, headY - 1);
+    ctx.stroke();
+
+    // Calm, Serene, Cold Blue Eyes behind glasses
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.arc(headX + 2.5 * direction, headY - 1, 1.2, 0, Math.PI * 2);
+    ctx.arc(headX + 8.2 * direction, headY - 1, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Polite, Subtle Gentle Smile
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(headX + 4.5 * direction, headY + 2.5, 3.5, 0.1 * Math.PI, 0.75 * Math.PI);
+    ctx.stroke();
+
+    // 1. Sleek Tailored Vancouver Overcoat & White Shirt with Slim Dark Tie
+    // White dress shirt collar
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.moveTo(neckX - 4 * direction, neckY - 1);
+    ctx.lineTo(neckX + 4 * direction, neckY - 1);
+    ctx.lineTo(neckX, neckY + 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Slim Navy Silk Tie
+    ctx.fillStyle = '#0284c7';
+    ctx.beginPath();
+    ctx.moveTo(neckX - 1.5 * direction, neckY + 1);
+    ctx.lineTo(neckX + 1.5 * direction, neckY + 1);
+    ctx.lineTo(neckX + 1 * direction, neckY + 14);
+    ctx.lineTo(neckX - 1 * direction, neckY + 14);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tailored Dark Slate-Navy Gentleman Overcoat
+    ctx.fillStyle = '#0f172a';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(neckX - 9 * direction, neckY);
+    ctx.lineTo(neckX - 3 * direction, neckY + 3);
+    ctx.lineTo(neckX, neckY + 8);
+    ctx.lineTo(neckX + 3 * direction, neckY + 3);
+    ctx.lineTo(neckX + 9 * direction, neckY);
+    ctx.lineTo(hipX + 10 * direction, hipY + 4);
+    ctx.lineTo(hipX - 10 * direction, hipY + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Overcoat Lapel Lines
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(neckX - 7 * direction, neckY);
+    ctx.lineTo(neckX - 1 * direction, neckY + 9);
+    ctx.moveTo(neckX + 7 * direction, neckY);
+    ctx.lineTo(neckX + 1 * direction, neckY + 9);
+    ctx.stroke();
+
+    // 2. High-Tensile 70m Motorcycle Drive Chains coiled neatly around forearms & hands
+    for (const h of [{ x: leftHandX, y: leftHandY }, { x: rightHandX, y: rightHandY }]) {
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(h.x - 5, h.y - 4);
+      ctx.lineTo(h.x + 5, h.y + 4);
+      ctx.stroke();
+
+      // Roller pins on cuffs
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(h.x - 3, h.y - 2, 1.4, 0, Math.PI * 2);
+      ctx.arc(h.x + 3, h.y + 2, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Absolute Invisible Drive Chain Deflection (Awaken 2)
+    // By default the chains are completely invisible (no rings or static circles).
+    // When an attack or object arrives, the drive chains automatically manifest to intercept and deflect!
+    if (isDeflecting && fighter.persteinDeflectReactionTimer && fighter.persteinDeflectReactionTimer > 0) {
+      const reactTimer = fighter.persteinDeflectReactionTimer;
+      const progress = reactTimer / 24; // 1.0 down to 0.0
+      const impactX = fighter.persteinDeflectImpactX !== undefined ? fighter.persteinDeflectImpactX - fighter.x : direction * 48;
+      const impactY = fighter.persteinDeflectImpactY !== undefined ? fighter.persteinDeflectImpactY - fighter.y : neckY + 4;
+      const impactAngle = fighter.persteinDeflectAngle !== undefined ? fighter.persteinDeflectAngle : (direction === 1 ? 0 : Math.PI);
+
+      ctx.save();
+
+      // Sudden Flash Shockwave at Impact point
+      ctx.strokeStyle = `rgba(56, 189, 248, ${progress * 0.9})`;
+      ctx.lineWidth = 3 * progress;
+      ctx.beginPath();
+      ctx.arc(impactX, impactY, (1 - progress) * 45 + 15, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Dynamic Deflection Angle & Sparks
+      for (let s = 0; s < 5; s++) {
+        const sDist = (1 - progress) * 35 + 10;
+        const sAngle = impactAngle + (Math.random() - 0.5) * 1.6;
+        ctx.strokeStyle = s % 2 === 0 ? '#facc15' : '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(impactX, impactY);
+        ctx.lineTo(impactX + Math.cos(sAngle) * sDist, impactY + Math.sin(sAngle) * sDist);
+        ctx.stroke();
+      }
+
+      // 4 Heavy-Duty Motorcycle Drive Chains Whipping Out from Hands/Cuffs to Intercept Impact
+      const anchorPoints = [
+        { x: rightHandX, y: rightHandY },
+        { x: leftHandX, y: leftHandY },
+        { x: neckX + direction * 12, y: neckY + 8 },
+        { x: hipX + direction * 8, y: hipY + 4 }
+      ];
+
+      for (let c = 0; c < anchorPoints.length; c++) {
+        const anc = anchorPoints[c];
+        const chainWave = Math.sin(time * 0.8 + c) * 16 * progress;
+        const midX = (anc.x + impactX) * 0.5 + Math.sin(c * 1.5) * 18;
+        const midY = (anc.y + impactY) * 0.5 + chainWave;
+
+        // Outer Plate Silhouette
+        ctx.strokeStyle = c % 2 === 0 ? '#cbd5e1' : '#38bdf8';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(anc.x, anc.y);
+        ctx.quadraticCurveTo(midX, midY, impactX, impactY);
+        ctx.stroke();
+
+        // High-Tensile Motorcycle Chain Rollers & Pins Along the Whipping Arc
+        for (let seg = 1; seg <= 5; seg++) {
+          const t = seg / 6;
+          const rx = (1 - t) * (1 - t) * anc.x + 2 * (1 - t) * t * midX + t * t * impactX;
+          const ry = (1 - t) * (1 - t) * anc.y + 2 * (1 - t) * t * midY + t * t * impactY;
+
+          // Steel roller plate
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Chrome / Cyan Hardened Roller Pin
+          ctx.fillStyle = c % 2 === 0 ? '#38bdf8' : '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 2 High-RPM Clashing Drive Sprockets at the exact Deflection Impact Point
+      ctx.save();
+      ctx.translate(impactX, impactY);
+      this.drawDriveChainSprocket(ctx, -6, -4, 18, 10, time * 0.6, '#38bdf8');
+      this.drawDriveChainSprocket(ctx, 6, 4, 14, 8, -time * 0.8, '#cbd5e1');
+      ctx.restore();
+
+      // High-Voltage Kinetic Deflection Glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(impactX, impactY, 5 * progress, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    // 4. Active Skill Specific Visuals
+    if (fighter.action === 'perstein_chain_whip') {
+      // Skill 1 (U): 70m Motorcycle Drive Chain Snare (Triple Wave Screen Span Hook & Reel)
+      const whipLen = Math.min(850, (22 - (fighter.actionTimer || 0)) * 75);
+      const startX = rightHandX;
+      const startY = rightHandY;
+
+      // 3 Multi-Strand High-Tensile Motorcycle Roller Chains
+      const strandOffsets = [
+        { yOff: 0, amp: 14, freq: 0.8, color: '#e2e8f0', pinColor: '#38bdf8', width: 4 },
+        { yOff: -8, amp: 10, freq: 1.1, color: '#94a3b8', pinColor: '#0ea5e9', width: 2.8 },
+        { yOff: 8, amp: 12, freq: 0.95, color: '#cbd5e1', pinColor: '#facc15', width: 2.8 },
+      ];
+
+      for (const strand of strandOffsets) {
+        const segCount = 18;
+        const pts: { x: number; y: number }[] = [];
+        for (let seg = 0; seg <= segCount; seg++) {
+          const t = seg / segCount;
+          const segX = startX + direction * (whipLen * t);
+          const wave = Math.sin(time * strand.freq + seg * 0.8) * strand.amp * (1 - t * 0.2);
+          pts.push({ x: segX, y: startY + strand.yOff + wave });
+        }
+
+        // Draw outer drive chain plates
+        ctx.strokeStyle = strand.color;
+        ctx.lineWidth = strand.width;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) {
+          ctx.lineTo(pts[s].x, pts[s].y);
+        }
+        ctx.stroke();
+
+        // Draw roller bushings and connecting pins
+        for (let s = 1; s < pts.length; s++) {
+          const pt = pts[s];
+          // Steel roller
+          ctx.fillStyle = '#475569';
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Chrome / Blue Tempered Center Pin
+          ctx.fillStyle = strand.pinColor;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Massive Lead Heavy-Duty Drive Sprocket & Hook Anchor at Tip
+      const targetX = startX + direction * whipLen;
+      const targetY = startY + Math.sin(time * 0.8 + 18 * 0.8) * 14 * 0.8;
+
+      ctx.save();
+      ctx.translate(targetX, targetY);
+      this.drawDriveChainSprocket(ctx, 0, 0, 18, 10, time * 1.5, '#38bdf8');
+
+      // Steel Hook Clamp Jaws at Tip
+      ctx.strokeStyle = '#f8fafc';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(direction * 18, -10);
+      ctx.lineTo(direction * 10, 0);
+      ctx.lineTo(direction * 18, 10);
+      ctx.lineTo(0, 14);
+      ctx.stroke();
+
+      // Friction trail sparks flying off tip
+      ctx.fillStyle = '#facc15';
+      for (let sp = 0; sp < 4; sp++) {
+        ctx.beginPath();
+        ctx.arc((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 20, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+    } else if (fighter.action === 'perstein_chain_bind_shred') {
+      // Skill 2 (I): High-RPM Drive Chain Shred Vortex
+      const vortexX = rightHandX + direction * 55;
+      const vortexY = rightHandY;
+
+      // 3 Concentric High-RPM Motorcycle Drive Chain Buzz-Saw Loops
+      const loops = [
+        { r: 42, rotSpeed: 1.4, sprocketTeeth: 12, color: '#38bdf8' },
+        { r: 28, rotSpeed: -1.8, sprocketTeeth: 8, color: '#0ea5e9' },
+        { r: 16, rotSpeed: 2.2, sprocketTeeth: 6, color: '#e2e8f0' },
+      ];
+
+      ctx.save();
+      ctx.translate(vortexX, vortexY);
+
+      // Cyan friction aura blur
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, 48, 0, Math.PI * 2);
+      ctx.stroke();
+
+      for (const lp of loops) {
+        ctx.save();
+        ctx.rotate(time * lp.rotSpeed);
+
+        // Drive Chain Sprocket Cutter
+        this.drawDriveChainSprocket(ctx, 0, 0, lp.r, lp.sprocketTeeth, time * lp.rotSpeed, lp.color);
+
+        // Revolving Figure-8 Outer Roller Chain Loop
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, lp.r + 4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // 8 Roller Pins
+        ctx.fillStyle = '#facc15';
+        for (let p = 0; p < 8; p++) {
+          const pa = (p * Math.PI) / 4;
+          ctx.beginPath();
+          ctx.arc(Math.cos(pa) * (lp.r + 4), Math.sin(pa) * (lp.r + 4), 2.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      // Flying high-heat metal grinding sparks & chain shrapnel
+      for (let s = 0; s < 8; s++) {
+        const sDist = 20 + Math.random() * 45;
+        const sAng = Math.random() * Math.PI * 2;
+        ctx.fillStyle = Math.random() < 0.6 ? '#facc15' : '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(Math.cos(sAng) * sDist, Math.sin(sAng) * sDist, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+
+    } else if (fighter.action === 'perstein_spark_ignition') {
+      // Skill 3 (O): Metal Friction Spark Blast (Ground Scraping Drive Chain Wave)
+      const scrapeOriginX = rightHandX + direction * 10;
+      const scrapeOriginY = fighter.y + fighter.height - 4;
+
+      ctx.save();
+      // High-Torque Ground Drive Sprocket Grinding the Concrete
+      this.drawDriveChainSprocket(ctx, scrapeOriginX, scrapeOriginY - 12, 22, 14, time * 2.5 * direction, '#facc15');
+
+      // Heavy Ground Scraping Drive Chain Loop
+      ctx.strokeStyle = '#facc15';
+      ctx.shadowColor = '#f59e0b';
+      ctx.shadowBlur = 20;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(rightHandX, rightHandY);
+      ctx.quadraticCurveTo(scrapeOriginX, scrapeOriginY, scrapeOriginX + direction * 80, scrapeOriginY);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Massive Rooster-Tail Fan of Molten Sparks & Debris
+      for (let sp = 0; sp < 14; sp++) {
+        const sDist = 30 + Math.random() * 110;
+        const sAngle = (direction === 1 ? -0.1 : Math.PI + 0.1) - (Math.random() * 0.65);
+        ctx.fillStyle = sp % 3 === 0 ? '#ffffff' : (sp % 2 === 0 ? '#facc15' : '#f97316');
+        ctx.beginPath();
+        ctx.arc(scrapeOriginX + Math.cos(sAngle) * sDist, scrapeOriginY + Math.sin(sAngle) * sDist, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Crawling Floor Spark Chain Shockwave
+      for (let wave = 1; wave <= 4; wave++) {
+        const wx = scrapeOriginX + direction * wave * 45;
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(wx, scrapeOriginY, 14 * wave * 0.4, Math.PI, 0, false);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+    } else if (fighter.action === 'perstein_awaken_touch') {
+      // Skill 5 (H): Direct Touch Flesh Tear (8 Erupting Piercing Drive Chains)
+      const touchX = rightHandX + direction * 40;
+      const touchY = rightHandY;
+
+      ctx.save();
+      // Speed afterimage phantom trail behind Perstein
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.fillRect(fighter.x - direction * 25, fighter.y, fighter.width, fighter.height);
+
+      // Crimson & Cyan Impact Shockwave Core
+      ctx.strokeStyle = '#ef4444';
+      ctx.shadowColor = '#ef4444';
+      ctx.shadowBlur = 25;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.arc(touchX, touchY, 26, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 8 Erupting Drive Chain Spikes Bursting Radially
+      for (let spk = 0; spk < 8; spk++) {
+        const sa = (spk * Math.PI) / 4 + time * 0.2;
+        const spkLen = 45 + (spk % 2) * 20;
+        const sx = touchX + Math.cos(sa) * spkLen;
+        const sy = touchY + Math.sin(sa) * spkLen;
+
+        // Drive chain spike line
+        ctx.strokeStyle = spk % 2 === 0 ? '#cbd5e1' : '#ef4444';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(touchX, touchY);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+
+        // Chain roller pins along spike
+        ctx.fillStyle = '#f8fafc';
+        ctx.beginPath();
+        ctx.arc(touchX + (sx - touchX) * 0.5, touchY + (sy - touchY) * 0.5, 2.5, 0, Math.PI * 2);
+        ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Blood red spark burst
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(sx + (Math.random() - 0.5) * 10, sy + (Math.random() - 0.5) * 10, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // =========================================================================
+  // MOTORCYCLE DRIVE CHAIN RENDERING ENGINE HELPERS
+  // =========================================================================
+  /**
+   * Draws an authentic machined industrial motorcycle drive chain sprocket (gear wheel)
+   * with lightening weight-reduction holes, machined gear teeth, center axle, and rotation angle.
+   */
+  private drawDriveChainSprocket(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    teethCount: number,
+    angle: number,
+    glowColor: string = '#38bdf8'
+  ) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+
+    // 1. Outer Sprocket Rim
+    ctx.fillStyle = '#1e293b';
+    ctx.strokeStyle = glowColor;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Machined Sprocket Teeth (Gear Teeth designed for Roller Links)
+    ctx.fillStyle = '#cbd5e1';
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1;
+    for (let t = 0; t < teethCount; t++) {
+      const ta = (t * Math.PI * 2) / teethCount;
+      const toothX = Math.cos(ta) * radius;
+      const toothY = Math.sin(ta) * radius;
+      ctx.beginPath();
+      ctx.arc(toothX, toothY, radius * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Tooth tip
+      const tipX = Math.cos(ta) * (radius * 1.18);
+      const tipY = Math.sin(ta) * (radius * 1.18);
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, radius * 0.12, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 3. Weight-Reduction Lightening Holes (Industrial CNC Pattern)
+    const holeRadius = radius * 0.22;
+    const holeDist = radius * 0.55;
+    const holeCount = Math.min(6, Math.max(3, Math.floor(teethCount / 2)));
+    ctx.fillStyle = '#0f172a';
+    for (let h = 0; h < holeCount; h++) {
+      const ha = (h * Math.PI * 2) / holeCount;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ha) * holeDist, Math.sin(ha) * holeDist, holeRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 4. Center Axle Hub & Nut
+    ctx.fillStyle = '#475569';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Center Axle Pin
+    ctx.fillStyle = glowColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  /**
+   * Ultimate Overlay: Silence After The Storm - 70m Heavy-Duty Motorcycle Drive Chain Execution
+   * Sequence:
+   * 1. Snare & Bind (Ngiket musuh dengan rantai drive chain 70m)
+   * 2. Pull / Reel In (Ditarik mendekat dengan torsi hidrolik)
+   * 3. Spin Shred (Rantai yang mengikat diputar pada RPM tinggi mencabik musuh)
+   * 4. Constriction Crush & Total Erosion (Diremet sampai musuh terkikis habis)
+   *
+   * Clean cinematic rendering directly on the battlefield without dimming or stage text banners.
+   */
+  private drawPersteinUltimateOverlay(perstein: Fighter, allFighters: Fighter[], gameTime: number) {
+    const ctx = this.ctx;
+    ctx.save();
+    const timer = perstein.actionTimer || 0; // 130 frames down to 0
+    const phase = perstein.persteinUltPhase || (timer >= 100 ? 'snare' : timer >= 80 ? 'pull' : timer >= 35 ? 'spin_shred' : 'constrict_crush');
+
+    // Locate primary victim
+    const victim = perstein.persteinUltVictimId
+      ? allFighters.find(f => f.id === perstein.persteinUltVictimId && f.hp > 0)
+      : allFighters.find(f => f.id !== perstein.id && f.team !== perstein.team && f.hp > 0);
+
+    // Focal Points in Screen Coordinates (Camera-aware)
+    const pScreenX = (perstein.x + perstein.width / 2) - this.cameraX;
+    const pScreenY = perstein.y + perstein.height / 2;
+    const dir = perstein.facing === 'right' ? 1 : -1;
+
+    let victimScreenX = victim ? (victim.x + victim.width / 2) - this.cameraX : pScreenX + dir * 180;
+    let victimScreenY = victim ? (victim.y + victim.height / 2) : pScreenY;
+
+    // =========================================================================
+    // PHASE 1: NGIKET MUSUH (70m Drive Chain Snare & Binding) [timer: 130 to 100]
+    // =========================================================================
+    if (phase === 'snare') {
+      const snareProgress = Math.min(1, (130 - timer) / 25);
+
+      // Multi-strand motorcycle roller drive chains whipping across from Perstein to Victim
+      const strandCount = 8;
+      for (let s = 0; s < strandCount; s++) {
+        const sYOff = (s - 3.5) * 14;
+        const wave = Math.sin(gameTime * 0.4 + s) * 25 * (1 - snareProgress);
+        const curEndX = pScreenX * (1 - snareProgress) + victimScreenX * snareProgress;
+        const curEndY = (pScreenY + sYOff * 0.3) * (1 - snareProgress) + (victimScreenY + sYOff) * snareProgress;
+
+        ctx.strokeStyle = s % 2 === 0 ? '#cbd5e1' : '#38bdf8';
+        ctx.lineWidth = s % 3 === 0 ? 4.5 : 3;
+        ctx.beginPath();
+        ctx.moveTo(pScreenX, pScreenY + sYOff * 0.2);
+        const ctrlX = (pScreenX + curEndX) * 0.5;
+        const ctrlY = (pScreenY + curEndY) * 0.5 + wave;
+        ctx.quadraticCurveTo(ctrlX, ctrlY, curEndX, curEndY);
+        ctx.stroke();
+
+        // Chain Rollers along flight path
+        for (let seg = 1; seg <= 5; seg++) {
+          const t = seg / 6;
+          const rx = (1 - t) * (1 - t) * pScreenX + 2 * (1 - t) * t * ctrlX + t * t * curEndX;
+          const ry = (1 - t) * (1 - t) * (pScreenY + sYOff * 0.2) + 2 * (1 - t) * t * ctrlY + t * t * curEndY;
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#f8fafc';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Spiral coils tightening around victim as snare completes
+      if (snareProgress > 0.4) {
+        const coilAlpha = (snareProgress - 0.4) / 0.6;
+        for (let c = 0; c < 5; c++) {
+          const cyOff = -32 + c * 16;
+          const cRadiusX = 36 - c * 2;
+          const cRadiusY = 10;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${coilAlpha})`;
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(victimScreenX, victimScreenY + cyOff, cRadiusX, cRadiusY, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // =========================================================================
+    // PHASE 2: DITARIK (Reeling In Bound Enemy With Hydraulic Torque) [timer: 99 to 80]
+    // =========================================================================
+    else if (phase === 'pull') {
+      // Tense, vibrating straight lines of heavy motorcycle drive chain under hydraulic load
+      const pullStrands = 6;
+      for (let s = 0; s < pullStrands; s++) {
+        const tensionJitter = (Math.random() - 0.5) * 3;
+        const sYOff = (s - 2.5) * 10;
+        ctx.strokeStyle = s % 2 === 0 ? '#f8fafc' : '#38bdf8';
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(pScreenX, pScreenY + sYOff * 0.4);
+        ctx.lineTo(victimScreenX, victimScreenY + sYOff + tensionJitter);
+        ctx.stroke();
+
+        // Conveyor motion of rollers moving rapidly toward Perstein
+        const rollPhase = (gameTime * 0.8 + s * 0.3) % 1;
+        for (let r = 0; r < 8; r++) {
+          const t = (r + rollPhase) / 8;
+          const rx = pScreenX * (1 - t) + victimScreenX * t;
+          const ry = (pScreenY + sYOff * 0.4) * (1 - t) + (victimScreenY + sYOff) * t;
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 3.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Reeling Sprockets at Perstein's hands
+      ctx.save();
+      this.drawDriveChainSprocket(ctx, pScreenX, pScreenY - 6, 26, 12, -gameTime * 0.6, '#38bdf8');
+      this.drawDriveChainSprocket(ctx, pScreenX, pScreenY + 14, 22, 10, -gameTime * 0.7, '#cbd5e1');
+      ctx.restore();
+
+      // Ground Drag Spark & Dust Trail
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(victimScreenX, pScreenY + 36);
+      ctx.lineTo(pScreenX, pScreenY + 36);
+      ctx.stroke();
+
+      for (let sp = 0; sp < 6; sp++) {
+        ctx.fillStyle = '#facc15';
+        ctx.beginPath();
+        ctx.arc(victimScreenX - dir * (sp * 14), pScreenY + 34 + (Math.random() * 8 - 4), 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // =========================================================================
+    // PHASE 3: DIPUTER (High-RPM Spinning Drive Chain Shredder) [timer: 79 to 35]
+    // =========================================================================
+    else if (phase === 'spin_shred') {
+      const spinSpeed = gameTime * 0.85;
+
+      // 8 Planetary High-RPM Sprockets circling victim
+      const sprocketRadius = 58;
+      for (let sp = 0; sp < 8; sp++) {
+        const spAngle = (sp * Math.PI) / 4 + spinSpeed;
+        const spX = victimScreenX + Math.cos(spAngle) * sprocketRadius;
+        const spY = victimScreenY + Math.sin(spAngle) * (sprocketRadius * 0.65);
+        this.drawDriveChainSprocket(ctx, spX, spY, 16, 8, -spinSpeed * 2, sp % 2 === 0 ? '#38bdf8' : '#facc15');
+      }
+
+      // High-RPM Spinning Vortex Drive Chains coiling around victim
+      const spinLoops = 12;
+      for (let l = 0; l < spinLoops; l++) {
+        const loopAngle = (l * Math.PI * 2) / spinLoops + spinSpeed * 1.5;
+        const rx = 52 + Math.sin(loopAngle) * 12;
+        const ry = 28 + Math.cos(loopAngle) * 8;
+
+        ctx.strokeStyle = l % 2 === 0 ? 'rgba(56, 189, 248, 0.85)' : 'rgba(248, 250, 252, 0.85)';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.ellipse(victimScreenX, victimScreenY - 12 + (l - 6) * 7, rx, ry, loopAngle * 0.4, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // High-RPM motion blur streaks & metal shavings
+        const sparkAngle = loopAngle + Math.random() * 0.4;
+        const spkX = victimScreenX + Math.cos(sparkAngle) * (rx + 8);
+        const spkY = victimScreenY - 12 + (l - 6) * 7 + Math.sin(sparkAngle) * (ry + 6);
+        ctx.fillStyle = l % 3 === 0 ? '#ef4444' : '#facc15';
+        ctx.beginPath();
+        ctx.arc(spkX, spkY, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Slicing Red Friction Arcs cutting into victim
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2.5;
+      for (let sl = 0; sl < 5; sl++) {
+        const slAngle = (sl * Math.PI) / 2.5 + spinSpeed * 2;
+        ctx.beginPath();
+        ctx.arc(victimScreenX, victimScreenY, 34, slAngle, slAngle + 0.8);
+        ctx.stroke();
+      }
+    }
+
+    // =========================================================================
+    // PHASE 4: DIREMET SAMPE MUSUHNYA KEKIKIS RANTAINYA AMPE ABIS [timer: 34 to 0]
+    // =========================================================================
+    else {
+      const crushProgress = Math.max(0, Math.min(1, (35 - timer) / 23)); // 0 (start crush) to 1 (frame 12 climax)
+      const currentRadius = 60 * (1 - crushProgress * 0.82) + 8; // Squeezes from 60px down to ~12px!
+
+      // Crushing vice jaws of motorcycle drive chains tightening into victim
+      const clampRings = 8;
+      for (let cr = 0; cr < clampRings; cr++) {
+        const ringY = victimScreenY - 26 + cr * 8;
+        ctx.strokeStyle = cr % 2 === 0 ? '#ef4444' : '#38bdf8';
+        ctx.lineWidth = 4.5 + crushProgress * 3;
+        ctx.beginPath();
+        ctx.ellipse(victimScreenX, ringY, currentRadius, currentRadius * 0.45, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Roller pins squeezing inwards
+        for (let p = 0; p < 6; p++) {
+          const pAngle = (p * Math.PI) / 3 + gameTime * 0.2;
+          const px = victimScreenX + Math.cos(pAngle) * currentRadius;
+          const py = ringY + Math.sin(pAngle) * (currentRadius * 0.45);
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Inward Hydraulic Pressure Shockwave Rings
+      ctx.strokeStyle = `rgba(239, 68, 68, ${0.4 + crushProgress * 0.5})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(victimScreenX, victimScreenY, currentRadius + 18, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // CLIMAX: Frame 12 Sudden Total Constriction Snap & Cataclysmic Sunder!
+      if (timer <= 14 && timer >= 2) {
+        const burstRatio = (14 - timer) / 12;
+
+        // Huge expanding pulverization rings (sharp, transparent background)
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 7 * (1 - burstRatio);
+        ctx.beginPath();
+        ctx.arc(victimScreenX, victimScreenY, burstRatio * 220, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 5 * (1 - burstRatio);
+        ctx.beginPath();
+        ctx.arc(victimScreenX, victimScreenY, burstRatio * 160, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
     ctx.restore();

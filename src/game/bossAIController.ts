@@ -6,11 +6,15 @@ export class BossAIController {
   private nextAction: string = 'idle';
   private comboChain: string[] = [];
   private comboIndex: number = 0;
+  private stuckFrames: number = 0;
+  private lastX: number = 0;
+  private lastY: number = 0;
 
   public update(
     boss: Fighter,
     targetOrTargets: Fighter | Fighter[],
-    activeGravityAxis: 'down' | 'right' | 'up' | 'left' = 'down'
+    activeGravityAxis: 'down' | 'right' | 'up' | 'left' = 'down',
+    arenaWidth: number = 2600
   ): InputState {
     // 1. Multi-target evaluation: Auto-target whoever is in the same dimension, alive, closer, or actively attacking the boss
     const candidates: Fighter[] = Array.isArray(targetOrTargets) ? targetOrTargets : [targetOrTargets];
@@ -49,7 +53,7 @@ export class BossAIController {
     const surfaceDist = (activeGravityAxis === 'right' || activeGravityAxis === 'left') ? dy : dx;
     const directDist = Math.hypot(dx, dy);
 
-    const bossType = boss.bossType || (boss.charId === 'dio' ? 'boss_dio' : boss.charId === 'tooru' ? 'boss_tooru' : boss.charId === 'pucci' ? 'boss_pucci' : 'boss_diavolo');
+    const bossType = boss.bossType || (boss.charId === 'dio' ? 'boss_dio' : boss.charId === 'tooru' ? 'boss_tooru' : boss.charId === 'pucci' ? 'boss_pucci' : boss.charId === 'dipez' ? 'boss_dipez' : boss.charId === 'michael' ? 'boss_michael' : 'boss_diavolo');
     const isTooru = bossType === 'boss_tooru' || boss.charId === 'tooru';
 
     const isTargetAttacking =
@@ -98,18 +102,35 @@ export class BossAIController {
           this.decideDiavoloBossAction(boss, primaryTarget, surfaceDist, directDist, isTargetAttacking);
         } else if (bossType === 'boss_pucci' || boss.charId === 'pucci') {
           this.decidePucciBossAction(boss, primaryTarget, surfaceDist, directDist, isTargetAttacking, activeGravityAxis);
+        } else if (bossType === 'boss_dipez' || boss.charId === 'dipez') {
+          this.decideDipezBossAction(boss, primaryTarget, surfaceDist, directDist, isTargetAttacking);
+        } else if (bossType === 'boss_michael' || boss.charId === 'michael') {
+          this.decideMichaelBossAction(boss, primaryTarget, surfaceDist, directDist, isTargetAttacking);
         } else {
           this.decideDioBossAction(boss, primaryTarget, surfaceDist, directDist, isTargetAttacking);
         }
       }
     }
 
-    // Auto-advance if idle and not in range
-    if (!isTooru && surfaceDist > 140 && this.nextAction === 'idle') {
+    // Auto-advance if idle and genuinely far from target (surfaceDist > 160)
+    if (!isTooru && surfaceDist > 160 && this.nextAction === 'idle') {
       this.nextAction = 'advance';
     }
 
-    return this.translateActionToInputs(this.nextAction, boss, primaryTarget, activeGravityAxis);
+    // Stuck position detection (wall pinning prevention)
+    if (Math.abs(boss.x - this.lastX) < 1 && Math.abs(boss.y - this.lastY) < 1 && (this.nextAction === 'advance' || this.nextAction === 'retreat')) {
+      this.stuckFrames++;
+      if (this.stuckFrames > 12) {
+        this.stuckFrames = 0;
+        this.nextAction = 'advance';
+      }
+    } else {
+      this.stuckFrames = 0;
+    }
+    this.lastX = boss.x;
+    this.lastY = boss.y;
+
+    return this.translateActionToInputs(this.nextAction, boss, primaryTarget, activeGravityAxis, arenaWidth);
   }
 
   // --- SUPREME BOSS TOORU (CALAMITY WONDER) BOSS TACTICS ---
@@ -384,14 +405,26 @@ export class BossAIController {
 
       // 2. Highly aggressive moves to build C-Moon Gauge
       if (surfaceDist < 180) {
-        if (boss.cooldowns.skill2 <= 0) {
+        if (boss.cooldowns.skill2 <= 0 && boss.energy >= 30) {
           this.nextAction = 'skill2'; // Inversion Punch (Massive inversion burst & reversal)
-          this.comboChain = ['skill4', 'barrage']; // Chain into Gravity Slam & Barrage
-          this.comboIndex = 0;
-        } else if (boss.cooldowns.skill4 <= 0) {
+          return;
+        }
+        if (boss.cooldowns.skill4 <= 0 && boss.energy >= 25) {
           this.nextAction = 'skill4'; // Gravity Slam / Shield repulsion
-        } else {
+          return;
+        }
+        if (boss.energy >= 15 && boss.cooldowns.barrage <= 0) {
           this.nextAction = 'barrage'; // C-Moon barrage (builds gauge very fast)
+          return;
+        }
+        if (boss.cooldowns.punch <= 0) {
+          this.nextAction = 'attack'; // C-Moon gravitational melee punch
+          return;
+        }
+        if (surfaceDist < 85) {
+          this.nextAction = Math.random() < 0.5 ? 'retreat' : 'crouch';
+        } else {
+          this.nextAction = 'idle';
         }
         return;
       }
@@ -453,16 +486,135 @@ export class BossAIController {
     }
   }
 
+  // --- LIGHT GOD DIPEZ SUPREME BOSS TACTICS ---
+  private decideDipezBossAction(boss: Fighter, player: Fighter, surfaceDist: number, directDist: number, isPlayerAttacking: boolean) {
+    const isPureLight = boss.dipezForm === 'pure_light';
+
+    if (isPureLight) {
+      if (boss.cooldowns.skill4 <= 0 && (boss.energy >= 50 || boss.hp < 1500) && Math.random() < 0.9) {
+        this.nextAction = 'ultimate'; // Star Maker!
+        this.comboChain = ['skill2', 'skill3'];
+        this.comboIndex = 0;
+        return;
+      }
+      if (boss.cooldowns.skill2 <= 0 && Math.random() < 0.85) {
+        this.nextAction = 'skill2'; // Full Map Sky Laser
+        this.comboChain = ['skill3', 'skill1'];
+        this.comboIndex = 0;
+        return;
+      }
+      if (boss.cooldowns.skill3 <= 0 && Math.random() < 0.85) {
+        this.nextAction = 'skill3'; // Speed of Light Blitz
+        this.comboChain = ['skill2', 'barrage'];
+        this.comboIndex = 0;
+        return;
+      }
+      if (boss.cooldowns.skill1 <= 0 && (!boss.dipezInvisibleTimer || boss.dipezInvisibleTimer <= 0)) {
+        this.nextAction = 'skill1'; // Photon Invisibility
+        return;
+      }
+      if (surfaceDist < 140) {
+        this.nextAction = boss.energy >= 30 ? 'barrage' : 'attack';
+      } else {
+        this.nextAction = 'advance';
+      }
+      return;
+    }
+
+    // Base form: prioritize Evolution Gamble!
+    if (boss.cooldowns.skill4 <= 0) {
+      this.nextAction = 'skill4'; // Evolve into Light God!
+      return;
+    }
+
+    if (surfaceDist < 130) {
+      if (boss.cooldowns.skill2 <= 0) {
+        this.nextAction = 'skill2'; // Flashbang
+        this.comboChain = ['skill3', 'skill1'];
+        this.comboIndex = 0;
+      } else if (boss.cooldowns.skill3 <= 0) {
+        this.nextAction = 'skill3'; // Arm Laser Cannon
+      } else if (boss.cooldowns.skill1 <= 0) {
+        this.nextAction = 'skill1'; // Photon Bullet
+      } else {
+        this.nextAction = 'attack';
+      }
+    } else {
+      if (boss.cooldowns.skill1 <= 0 && Math.random() < 0.8) {
+        this.nextAction = 'skill1'; // Photon Bullet
+      } else if (boss.cooldowns.skill3 <= 0 && Math.random() < 0.75) {
+        this.nextAction = 'skill3'; // Arm Laser Cannon
+      } else {
+        this.nextAction = 'advance';
+      }
+    }
+  }
+
+  // --- MICHAEL JUNISTER (GHOST: HAT PRICE) BOSS TACTICS ---
+  private decideMichaelBossAction(boss: Fighter, player: Fighter, surfaceDist: number, directDist: number, isPlayerAttacking: boolean) {
+    // 1. Ultimate: Maximum Price Blitz when in range or in low HP
+    if (boss.cooldowns.ultimate <= 0 && (boss.energy >= 70 || boss.hp < 1500) && surfaceDist < 300 && Math.random() < 0.9) {
+      this.nextAction = 'ultimate';
+      this.comboChain = ['skill1', 'skill3'];
+      this.comboIndex = 0;
+      return;
+    }
+
+    // 2. Flash Step Counter Stance when player attacks within range
+    if (isPlayerAttacking && surfaceDist < 170 && boss.cooldowns.skill2 <= 0 && boss.energy >= 25 && Math.random() < 0.85) {
+      this.nextAction = 'skill2';
+      this.comboChain = ['skill5', 'skill1'];
+      this.comboIndex = 0;
+      return;
+    }
+
+    // 3. Hat Price Overdrive (Skill 4) - activate buff whenever down
+    if (boss.cooldowns.skill4 <= 0 && (!boss.michaelOverdriveTimer || boss.michaelOverdriveTimer <= 30) && boss.energy >= 35) {
+      this.nextAction = 'skill4';
+      return;
+    }
+
+    // 4. Mid-range: Golden Palm Thrust (Skill 1)
+    if (surfaceDist >= 80 && surfaceDist <= 240 && boss.cooldowns.skill1 <= 0 && boss.energy >= 20 && Math.random() < 0.8) {
+      this.nextAction = 'skill1';
+      this.comboChain = ['skill3', 'skill5'];
+      this.comboIndex = 0;
+      return;
+    }
+
+    // 5. Close range: Axe Kick or Kinetic Barrage
+    if (surfaceDist < 120) {
+      if (boss.cooldowns.skill3 <= 0 && boss.energy >= 25 && Math.random() < 0.75) {
+        this.nextAction = 'skill3';
+        this.comboChain = ['skill5'];
+        this.comboIndex = 0;
+        return;
+      }
+      if (boss.cooldowns.skill5 <= 0 && boss.energy >= 35 && Math.random() < 0.8) {
+        this.nextAction = 'skill5';
+        return;
+      }
+      this.nextAction = boss.energy >= 25 ? 'barrage' : 'attack';
+    } else {
+      this.nextAction = 'advance';
+    }
+  }
+
   // --- GRAVITY-AWARE INPUT TRANSLATION ---
   private translateActionToInputs(
     action: string,
     boss: Fighter,
     player: Fighter,
-    activeGravityAxis: 'down' | 'right' | 'up' | 'left' = 'down'
+    activeGravityAxis: 'down' | 'right' | 'up' | 'left' = 'down',
+    arenaWidth: number = 2600
   ): InputState {
     const isToLeft = player.x < boss.x;
     const isAbove = player.y < boss.y;
     const isBelow = player.y > boss.y;
+
+    const dx = Math.abs(boss.x - player.x);
+    const dy = Math.abs(boss.y - player.y);
+    const surfaceDist = (activeGravityAxis === 'right' || activeGravityAxis === 'left') ? dy : dx;
 
     const input: InputState = {
       left: false,
@@ -482,8 +634,38 @@ export class BossAIController {
       ultimate: false,
     };
 
+    // Auto-face target to prevent Boss AI from facing away or getting stuck attacking empty air
+    if (activeGravityAxis === 'down' || activeGravityAxis === 'up') {
+      if (player.x > boss.x + 5) {
+        if (action !== 'retreat') boss.facing = 'right';
+      } else if (player.x < boss.x - 5) {
+        if (action !== 'retreat') boss.facing = 'left';
+      }
+    } else if (activeGravityAxis === 'right') {
+      // Right wall: facing === 'right' means UP (-Y), facing === 'left' means DOWN (+Y)
+      if (player.y < boss.y - 5) {
+        if (action !== 'retreat') boss.facing = 'right'; // Face UP
+      } else if (player.y > boss.y + 5) {
+        if (action !== 'retreat') boss.facing = 'left'; // Face DOWN
+      }
+    } else if (activeGravityAxis === 'left') {
+      // Left wall: facing === 'left' means UP (-Y), facing === 'right' means DOWN (+Y)
+      if (player.y < boss.y - 5) {
+        if (action !== 'retreat') boss.facing = 'left'; // Face UP
+      } else if (player.y > boss.y + 5) {
+        if (action !== 'retreat') boss.facing = 'right'; // Face DOWN
+      }
+    }
+
     switch (action) {
       case 'advance':
+        if (surfaceDist <= 85) {
+          // Bodies are already in contact / touching. Do not push continuously into player.
+          if (boss.cooldowns.punch <= 0) {
+            input.punch = true; // Quick point-blank poke
+          }
+          break;
+        }
         if (activeGravityAxis === 'right') {
           if (isAbove) input.jump = true; // Walk UP along right wall
           else if (isBelow) input.crouch = true; // Walk DOWN along right wall
@@ -503,9 +685,13 @@ export class BossAIController {
             input.crouch = true; // Drop down into arena
           }
         } else {
+          const isAtLeftWall = boss.x <= 75;
+          const isAtRightWall = boss.x >= arenaWidth - boss.width - 75;
+
           if (isToLeft) input.left = true;
           else input.right = true;
-          if (player.y < boss.y - 80 && boss.isGrounded && Math.random() < 0.4) {
+
+          if ((player.y < boss.y - 70 || (isAtLeftWall && isToLeft) || (isAtRightWall && !isToLeft)) && boss.isGrounded) {
             input.jump = true;
           }
         }
@@ -522,8 +708,22 @@ export class BossAIController {
           if (isToLeft) input.right = true;
           else input.left = true;
         } else {
-          if (isToLeft) input.right = true;
-          else input.left = true;
+          // Normal 'down' floor
+          const isAtLeftWall = boss.x <= 75;
+          const isAtRightWall = boss.x >= arenaWidth - boss.width - 75;
+
+          if (isAtLeftWall) {
+            input.right = true;
+            if (boss.isGrounded) input.jump = true;
+            boss.facing = 'right';
+          } else if (isAtRightWall) {
+            input.left = true;
+            if (boss.isGrounded) input.jump = true;
+            boss.facing = 'left';
+          } else {
+            if (isToLeft) input.right = true;
+            else input.left = true;
+          }
         }
         break;
 

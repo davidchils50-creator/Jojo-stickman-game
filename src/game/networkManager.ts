@@ -115,7 +115,7 @@ class NetworkManager {
   public localSlotId: number = 0; // 0 for host, 1..4 for clients
 
   // Signaling & WebRTC fields
-  public connectionMode: 'supabase' | 'peerjs' = 'supabase';
+  public connectionMode: 'supabase' | 'peerjs' = 'peerjs';
   public supabasePC: RTCPeerConnection | null = null;
   public supabaseDC: RTCDataChannel | null = null;
   public supabaseChannel: any = null;
@@ -259,9 +259,12 @@ class NetworkManager {
           { urls: 'stun:stun2.l.google.com:19302' },
           { urls: 'stun:stun3.l.google.com:19302' },
           { urls: 'stun:stun4.l.google.com:19302' },
+          { urls: 'stun:stun.cloudflare.com:3478' },
+          { urls: 'stun:global.stun.twilio.com:3478' },
         ],
+        iceCandidatePoolSize: 10,
       },
-      debug: 3,
+      debug: 1,
     };
   }
 
@@ -311,7 +314,7 @@ class NetworkManager {
       }
     };
     sendHeartbeat();
-    this.publicRoomHeartbeatInterval = setInterval(sendHeartbeat, 4000);
+    this.publicRoomHeartbeatInterval = setInterval(sendHeartbeat, 2500);
   }
 
   public stopPublicRoomHeartbeat() {

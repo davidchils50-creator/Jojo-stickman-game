@@ -37,7 +37,19 @@ async function startServer() {
   // In-memory lobby database for WebRTC signaling
   const lobbies = new Map<string, LobbySignal>();
 
-  // Clean up inactive rooms (> 10 minutes old) every 5 minutes
+  // In-memory public rooms directory for lobby listing
+  interface PublicRoomRecord {
+    id: string;
+    room_name: string;
+    host_char: string;
+    status: 'waiting' | 'connected' | 'closed';
+    connection_mode: 'peerjs' | 'supabase';
+    created_at: string;
+    updated_at: number;
+  }
+  const publicRoomsMap = new Map<string, PublicRoomRecord>();
+
+  // Clean up inactive rooms (> 10 minutes old) and stale public rooms (> 45s no heartbeat)
   setInterval(() => {
     const now = Date.now();
     for (const [code, lobby] of lobbies.entries()) {
@@ -45,12 +57,57 @@ async function startServer() {
         lobbies.delete(code);
       }
     }
-  }, 5 * 60 * 1000);
+    for (const [id, room] of publicRoomsMap.entries()) {
+      if (now - room.updated_at > 45 * 1000) {
+        publicRoomsMap.delete(id);
+      }
+    }
+  }, 10 * 1000);
 
-  // --- API Routes for WebRTC Signaling Relay ---
+  // --- API Routes for WebRTC Signaling Relay & Public Room Directory ---
 
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", activeRooms: lobbies.size });
+    res.json({ status: "ok", activeRooms: lobbies.size, publicRooms: publicRoomsMap.size });
+  });
+
+  // Public Rooms API
+  app.get("/api/rooms", (req, res) => {
+    const now = Date.now();
+    const active = Array.from(publicRoomsMap.values())
+      .filter(r => r.status === 'waiting' && now - r.updated_at < 45 * 1000)
+      .sort((a, b) => b.updated_at - a.updated_at);
+    res.json({ rooms: active });
+  });
+
+  app.post("/api/rooms/publish", (req, res) => {
+    const { id, room_name, host_char, status, connection_mode } = req.body;
+    if (!id) {
+      res.status(400).json({ error: "Missing room id" });
+      return;
+    }
+    const cleanId = String(id).trim().toUpperCase();
+    if (status === 'closed') {
+      publicRoomsMap.delete(cleanId);
+    } else {
+      publicRoomsMap.set(cleanId, {
+        id: cleanId,
+        room_name: room_name || `Room ${cleanId}`,
+        host_char: host_char || 'jotaro',
+        status: status || 'waiting',
+        connection_mode: connection_mode || 'peerjs',
+        created_at: new Date().toISOString(),
+        updated_at: Date.now(),
+      });
+    }
+    res.json({ success: true, count: publicRoomsMap.size });
+  });
+
+  app.post("/api/rooms/unpublish", (req, res) => {
+    const { id } = req.body;
+    if (id) {
+      publicRoomsMap.delete(String(id).trim().toUpperCase());
+    }
+    res.json({ success: true });
   });
 
   // 1. Host creates a room

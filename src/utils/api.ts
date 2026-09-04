@@ -21,7 +21,7 @@ export function getApiUrl(path: string): string {
 /**
  * Safely fetches and parses JSON, preventing "Unexpected token <" crash on HTML redirect pages
  */
-export async function safeFetchJson(url: string, options?: RequestInit): Promise<any> {
+export async function safeFetchJson<T = any>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, options);
   const text = await res.text();
   

@@ -12,6 +12,7 @@ import {
   BOSS_DIAVOLO_MAX_HP,
   BOSS_TOORU_MAX_HP,
   BOSS_PUCCI_MAX_HP,
+  SUN_MIRROR_MAX_HP,
 } from './constants';
 
 export function createFighter(
@@ -116,7 +117,7 @@ export function createFighter(
     energy: matchConfig?.mode === 'training' ? 100 : 60,
     maxEnergy: PLAYER_MAX_ENERGY,
 
-    hasStand: effectiveCharId !== 'jonathan' && effectiveCharId !== 'joseph_young' && effectiveCharId !== 'stickman' && effectiveCharId !== 'vampire',
+    hasStand: effectiveCharId !== 'jonathan' && effectiveCharId !== 'joseph_young' && effectiveCharId !== 'stickman' && effectiveCharId !== 'vampire' && effectiveCharId !== 'tooru' && effectiveCharId !== 'arabian_fat',
     isStandActive: false,
     standAlpha: 0,
     standOffset: { x: 0, y: 0 },
@@ -173,6 +174,50 @@ export function createFighter(
     dipezStarMakerActive: false,
     dipezStarMakerTimer: 0,
     dipezStarMakerFlash: 0,
+
+    // Arabian Fat & The Sun initial state
+    isHidingBehindMirror: effectiveCharId === 'arabian_fat',
+    mirrorObject: effectiveCharId === 'arabian_fat' ? {
+      x: x - (facing === 'right' ? 25 : 45),
+      y: GROUND_Y - bossHeight - 10,
+      width: 75,
+      height: bossHeight + 10,
+      hp: SUN_MIRROR_MAX_HP,
+      maxHp: SUN_MIRROR_MAX_HP,
+      isDestroyed: false,
+      glintTimer: 0,
+      hitFlashTimer: 0,
+    } : undefined,
+    sunActive: effectiveCharId === 'arabian_fat',
+    sunTemperature: effectiveCharId === 'arabian_fat' ? 15 : 0,
+    sunLaserTimer: 60,
+    sunX: x,
+    sunY: 70,
+    sunExposedTimer: 0,
+
+    // Michael Junister (Ghost: Hat Price)
+    michaelOverdriveTimer: 0,
+    michaelCounterActive: false,
+    michaelCounterTimer: 0,
+    michaelKineticMeter: effectiveCharId === 'michael' ? 25 : 0,
+    michaelKineticStacks: effectiveCharId === 'michael' ? 1 : 0,
+    isGeorgeMounted: false,
+    georgeMountingTimer: 0,
+    georgePendingRemount: false,
+    georgeFallOffTimer: 0,
+    georgeState: 'idle',
+
+    // Wally Wable / Perstein (Ghost: Wable the Metal Cutter)
+    persteinDeflectionActive: false,
+    persteinDeflectionTimer: 0,
+    persteinShredTargetId: null,
+    persteinShredTimer: 0,
+    persteinShredHitsRemaining: 0,
+    persteinChainBindTimer: 0,
+    persteinChainSparkTimer: 0,
+    persteinChainLength: 0,
+    persteinRPM: 0,
+    persteinSilenceTimer: 0,
 
     // Tooru autonomous Stand entity
     wouEntity: effectiveCharId === 'tooru' ? {

@@ -19,7 +19,8 @@ import {
   Truck,
   Users,
   Skull,
-  Compass
+  Compass,
+  Bot
 } from 'lucide-react';
 import { CharacterDef, MapDef, GameMode, MatchConfig, BossType } from '../types';
 import { CHARACTERS, MAPS, BOSS_CHARACTERS } from '../game/constants';
@@ -539,24 +540,24 @@ export const PreMatchMenu: React.FC<PreMatchMenuProps> = ({
                 <p className="text-xs text-slate-400">Pilih mode arcade standar, latihan jurus barrage & Time Stop, atau survival rush</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div
                   onClick={() => setSelectedMode('arcade')}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     selectedMode === 'arcade'
                       ? 'border-yellow-400 bg-gradient-to-b from-yellow-500/10 to-slate-950 shadow-xl shadow-yellow-500/10 ring-1 ring-yellow-400/60'
                       : 'border-slate-800 bg-slate-950/60 hover:bg-slate-900/40 hover:border-slate-700'
                   }`}
                 >
                   <div>
-                    <div className="w-9 h-9 rounded-xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400 mb-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400 mb-2">
                       <Trophy className="w-4 h-4" />
                     </div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                    <h3 className="text-xs font-black uppercase tracking-tight text-white mb-1">
                       Arcade 1v1 Match
                     </h3>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      Pertarungan kompetitif 1 lawan 1 dengan batas waktu 99 detik melawan AI Stickman cerdas.
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                      Pertarungan 1v1 dengan batas waktu 99 detik melawan AI Stickman cerdas.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 text-[9px] font-bold">
@@ -566,47 +567,72 @@ export const PreMatchMenu: React.FC<PreMatchMenuProps> = ({
                 </div>
 
                 <div
+                  onClick={() => setSelectedMode('cpu_vs_cpu')}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                    selectedMode === 'cpu_vs_cpu'
+                      ? 'border-purple-400 bg-gradient-to-b from-purple-500/20 via-indigo-950/40 to-slate-950 shadow-xl shadow-purple-500/20 ring-1 ring-purple-400/60'
+                      : 'border-slate-800 bg-slate-950/60 hover:bg-slate-900/40 hover:border-slate-700'
+                  }`}
+                >
+                  <div>
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 mb-2">
+                      <Bot className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-xs font-black uppercase tracking-tight text-white mb-1 flex items-center gap-1">
+                      CPU VS CPU
+                    </h3>
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                      Pertarungan otomatis 2 AI Stickman (Bot P1 vs Bot P2) tanpa kontrol manual!
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-[9px] font-bold">
+                    <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">AI VS AI</span>
+                    <span className="px-2 py-0.5 rounded bg-slate-900 text-yellow-400">Spectate</span>
+                  </div>
+                </div>
+
+                <div
                   onClick={() => setSelectedMode('training')}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     selectedMode === 'training'
                       ? 'border-cyan-400 bg-gradient-to-b from-cyan-500/10 to-slate-950 shadow-xl shadow-cyan-500/10 ring-1 ring-cyan-400/60'
                       : 'border-slate-800 bg-slate-950/60 hover:bg-slate-900/40 hover:border-slate-700'
                   }`}
                 >
                   <div>
-                    <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 mb-2">
                       <Activity className="w-4 h-4" />
                     </div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                    <h3 className="text-xs font-black uppercase tracking-tight text-white mb-1">
                       Training Mode
                     </h3>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      Latih kombo, animasi barrage, dan Time Stop counter dengan Stand Energy (SP) tak terbatas tanpa game over.
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                      Latih kombo, animasi barrage, dan Time Stop counter dengan Stand Energy (SP) tak terbatas.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 text-[9px] font-bold">
                     <span className="px-2 py-0.5 rounded bg-slate-900 text-cyan-400">Infinite Energy</span>
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300">Practice Dummy</span>
+                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300">Practice</span>
                   </div>
                 </div>
 
                 <div
                   onClick={() => setSelectedMode('team_boss')}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     selectedMode === 'team_boss'
                       ? 'border-rose-400 bg-gradient-to-b from-rose-500/10 to-slate-950 shadow-xl shadow-rose-500/10 ring-1 ring-rose-400/60'
                       : 'border-slate-800 bg-slate-950/60 hover:bg-slate-900/40 hover:border-slate-700'
                   }`}
                 >
                   <div>
-                    <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mb-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 mb-2">
                       <Skull className="w-4 h-4" />
                     </div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
+                    <h3 className="text-xs font-black uppercase tracking-tight text-white mb-1">
                       Team VS Boss Raid
                     </h3>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      Bertim 2 petarung melawan Supreme Boss (Awakened DIO / Emperor Diavolo) dengan HP raksasa! Pemain bisa respawn!
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                      Bertim 2 petarung melawan Supreme Boss dengan HP raksasa! Pemain bisa respawn!
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 text-[9px] font-bold">
@@ -617,21 +643,21 @@ export const PreMatchMenu: React.FC<PreMatchMenuProps> = ({
 
                 <div
                   onClick={() => setSelectedMode('team_survival')}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
                     selectedMode === 'team_survival'
                       ? 'border-emerald-400 bg-gradient-to-b from-emerald-500/10 to-slate-950 shadow-xl shadow-emerald-500/10 ring-1 ring-emerald-400/60'
                       : 'border-slate-800 bg-slate-950/60 hover:bg-slate-900/40 hover:border-slate-700'
                   }`}
                 >
                   <div>
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mb-2">
                       <Compass className="w-4 h-4" />
                     </div>
-                    <h3 className="text-sm font-black uppercase tracking-tight text-white mb-1">
-                      Team Survival (Wide Map)
+                    <h3 className="text-xs font-black uppercase tracking-tight text-white mb-1">
+                      Team Survival
                     </h3>
-                    <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                      Arena luas 2600px dengan Dynamic Camera Follow! Bantai musuh sebanyak mungkin. Tidak ada respawn!
+                    <p className="text-[10px] text-slate-400 leading-relaxed mb-2.5">
+                      Arena 2600px dengan Dynamic Camera! Bantai musuh sebanyak mungkin tanpa respawn!
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1 text-[9px] font-bold">

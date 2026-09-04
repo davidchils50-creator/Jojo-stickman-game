@@ -247,9 +247,6 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
     setIsInRoom(false);
     setErrorMsg('');
     setModeTab(tab);
-    if (tab === 'lobby') {
-      handleConnectionModeChange('supabase');
-    }
     if (tab === 'host') {
       setSelectedChar(defaultHostChar);
     } else {
@@ -782,21 +779,17 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
                   <>
                     <h2 className="text-sm font-black uppercase text-white tracking-wide">Mulai Sebagai Host</h2>
                     <p className="text-[11px] text-slate-400">
-                      {connectionMode === 'supabase' 
-                        ? 'Room akan terdaftar di Supabase Realtime & Lobby Publik!' 
-                        : 'Buat room PeerJS, bagikan ID ke teman Anda.'}
+                      Buat room pertandingan. Room otomatis muncul di Lobby Publik HP lawan & bisa join via Kode!
                     </p>
                     
-                    {connectionMode === 'supabase' && (
-                      <input
-                        type="text"
-                        placeholder="Nama Room (opsional, contoh: Mabar JJBA)"
-                        value={roomNameInput}
-                        onChange={(e) => setRoomNameInput(e.target.value)}
-                        maxLength={24}
-                        className="w-full text-center text-xs bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 focus:outline-none focus:border-emerald-500 text-emerald-300 placeholder:text-slate-600 font-bold"
-                      />
-                    )}
+                    <input
+                      type="text"
+                      placeholder="Nama Room (opsional, contoh: Mabar 1v1)"
+                      value={roomNameInput}
+                      onChange={(e) => setRoomNameInput(e.target.value)}
+                      maxLength={24}
+                      className="w-full text-center text-xs bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 focus:outline-none focus:border-purple-500 text-yellow-300 placeholder:text-slate-600 font-bold"
+                    />
 
                     <button
                       onClick={handleCreateRoom}
@@ -809,14 +802,12 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
                   <>
                     <h2 className="text-sm font-black uppercase text-white tracking-wide">Masuk ke Room Lawan</h2>
                     <p className="text-[11px] text-slate-400">
-                      {connectionMode === 'supabase'
-                        ? 'Masukkan Kode Room Supabase (6 digit).'
-                        : 'Masukkan Kode ID PeerJS milik teman Anda.'}
+                      Masukkan Kode Room (contoh: JJ7K9L) milik Host atau pilih langsung di tab "Lobby Publik".
                     </p>
                     
                     <input
                       type="text"
-                      placeholder="Contoh: JJ39FX"
+                      placeholder="Contoh: JJ7K9L"
                       value={roomInput}
                       onChange={(e) => setRoomInput(e.target.value.toUpperCase())}
                       maxLength={12}
@@ -833,20 +824,20 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
                 ) : (
                   <div className="w-full flex flex-col gap-3">
                     <div className="text-center">
-                      <h2 className="text-sm font-black uppercase text-white tracking-wide">Lobby Mabar Publik (Supabase)</h2>
-                      <p className="text-[10px] text-slate-400 mt-1">Daftar room aktif tersinkronisasi via Supabase Realtime.</p>
+                      <h2 className="text-sm font-black uppercase text-white tracking-wide">Lobby Mabar Publik</h2>
+                      <p className="text-[10px] text-slate-400 mt-1">Daftar room aktif dari pemain lain (Live Sync 2 HP).</p>
                     </div>
 
                     <div className="w-full max-h-[180px] overflow-y-auto pr-1 flex flex-col gap-2 border-y border-slate-800 py-2 scrollbar-thin scrollbar-thumb-slate-800">
                       {isLoadingPublicRooms ? (
                         <div key="loading-rooms" className="py-4 text-center text-slate-500 text-[11px] font-bold animate-pulse flex items-center justify-center gap-1.5">
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
-                          <span>Mengambil daftar room Supabase...</span>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                          <span>Mencari room aktif...</span>
                         </div>
                       ) : publicRooms.length === 0 ? (
                         <div key="empty-rooms" className="py-4 text-center text-slate-500 text-[11px] font-bold flex flex-col items-center gap-1">
-                          <span>Belum ada room publik aktif di Supabase.</span>
-                          <span className="text-emerald-400/90 font-black">Jadilah yang pertama membuat room di tab "Host Game"!</span>
+                          <span>Belum ada room publik aktif.</span>
+                          <span className="text-purple-400/90 font-black">Buat room di HP 1 lewat tab "Host Game"!</span>
                         </div>
                       ) : (
                         <div key="rooms-list" className="flex flex-col gap-2 w-full">
@@ -855,14 +846,14 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
                             return (
                               <div
                                 key={room.id}
-                                className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-2.5 rounded-xl flex items-center justify-between gap-2 transition-all w-full"
+                                className="bg-slate-900 border border-slate-800 hover:border-purple-500/50 p-2.5 rounded-xl flex items-center justify-between gap-2 transition-all w-full"
                               >
                                 <div className="text-left flex flex-col min-w-0 flex-1">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="text-emerald-400 font-mono font-black text-xs tracking-wider uppercase">
+                                    <span className="text-yellow-400 font-mono font-black text-xs tracking-wider uppercase">
                                       {room.id}
                                     </span>
-                                    <span className="text-[10px] text-slate-300 font-extrabold truncate">
+                                    <span className="text-[10px] text-slate-200 font-extrabold truncate">
                                       {room.room_name || `Room ${room.id}`}
                                     </span>
                                   </div>
@@ -872,7 +863,7 @@ const MultiplayerMenuInner: React.FC<MultiplayerMenuProps> = ({ onStartMultiplay
                                 </div>
                                 <button
                                   onClick={() => handleJoinRoomWithCode(room.id, room.connection_mode)}
-                                  className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-sm shadow-emerald-500/10 active:scale-95 shrink-0"
+                                  className="px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-sm shadow-purple-500/20 active:scale-95 shrink-0"
                                 >
                                   GABUNG
                                 </button>

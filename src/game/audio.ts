@@ -316,6 +316,8 @@ class SoundSynthesizer {
       this.playDojyaaan();
     } else if (charId === 'dipez') {
       this.playDipezEvolution();
+    } else if (charId === 'michael') {
+      this.playMichaelGoldAura();
     }
 
     try {
@@ -1115,7 +1117,7 @@ class SoundSynthesizer {
 
   // --- ENRICO PUCCI & EVOLUTION AUDIO SUITE ---
 
-  // Whitesnake Pistol Shot
+  // Whitesnake Pistol Shot (Crisp Gunshot snap & metallic casing ring)
   public playPucciPistol() {
     if (this.isMuted) return;
     this.init();
@@ -1127,20 +1129,33 @@ class SoundSynthesizer {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(980, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
-      gain.gain.setValueAtTime(0.45, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.frequency.setValueAtTime(1180, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + 0.16);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.18);
+      osc.stop(now + 0.16);
+
+      // Metallic hammer click
+      const oscClick = this.ctx.createOscillator();
+      const gainClick = this.ctx.createGain();
+      oscClick.type = 'triangle';
+      oscClick.frequency.setValueAtTime(2400, now);
+      oscClick.frequency.exponentialRampToValueAtTime(600, now + 0.04);
+      gainClick.gain.setValueAtTime(0.3, now);
+      gainClick.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      oscClick.connect(gainClick);
+      gainClick.connect(this.ctx.destination);
+      oscClick.start(now);
+      oscClick.stop(now + 0.04);
     } catch {
       // Audio guard
     }
   }
 
-  // Whitesnake DISC Extract / Insertion
+  // Whitesnake DISC Extract / Insertion (Holographic shimmering chime)
   public playPucciDisc() {
     if (this.isMuted) return;
     this.init();
@@ -1148,74 +1163,86 @@ class SoundSynthesizer {
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(2400, now + 0.12);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.22);
-    } catch {
-      // Audio guard
-    }
-  }
 
-  // Whitesnake Acid Melt Sizzle
-  public playPucciAcid() {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.ctx) return;
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(980, now);
+      osc1.frequency.exponentialRampToValueAtTime(2200, now + 0.18);
 
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.linearRampToValueAtTime(800, now + 0.25);
-      gain.gain.setValueAtTime(0.2, now);
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1480, now);
+      osc2.frequency.exponentialRampToValueAtTime(3200, now + 0.22);
+
+      gain.gain.setValueAtTime(0.35, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-      osc.connect(gain);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
       gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.25);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.25);
+      osc2.stop(now + 0.25);
     } catch {
       // Audio guard
     }
   }
 
-  // 14 Words Gregorian / Sacred Chant Chime
-  public play14WordsChant(step: number) {
+  // Whitesnake Acid Melt Sizzle & Boiling Corrosive Sludge
+  public playPucciAcid() {
+    this.playAcidMelt();
+  }
+
+  // 14 Words Gregorian / Sacred Chant Chime with Harmonic Ascending Intervals
+  public play14WordsChant(step: number = 1) {
     if (this.isMuted) return;
     this.init();
     if (!this.ctx) return;
 
     try {
       const now = this.ctx.currentTime;
-      const baseFreq = 261.63 * Math.pow(1.059463, (step % 12)); // Chromatic holy tones
-      const osc = this.ctx.createOscillator();
+      // 14 sacred musical scale frequencies (A minor / harmonic cathedral progression)
+      const scale = [220, 247, 261, 293, 329, 349, 392, 440, 493, 523, 587, 659, 698, 880];
+      const baseFreq = scale[Math.min(scale.length - 1, Math.max(0, step - 1))] || 440;
+
+      // Resonant Cathedral Bell
+      const osc1 = this.ctx.createOscillator();
+      const osc2 = this.ctx.createOscillator();
+      const osc3 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(baseFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, now + 0.35);
 
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(baseFreq, now);
 
-      osc.connect(gain);
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(baseFreq * 1.5, now); // Fifth harmonic
+
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(baseFreq * 2, now); // Octave
+
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      osc3.connect(gain);
       gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.35);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc3.start(now);
+      osc1.stop(now + 0.42);
+      osc2.stop(now + 0.42);
+      osc3.stop(now + 0.42);
     } catch {
       // Audio guard
     }
   }
 
-  // C-Moon Gravity Shift Resonance
+  // C-Moon Iconic Anime Gravity Shift Synthesizer (Resonant alien pitch bend, sub-bass plunge & gravity chime)
   public playCmoonGravity() {
     if (this.isMuted) return;
     this.init();
@@ -1223,26 +1250,71 @@ class SoundSynthesizer {
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(80, now);
-      osc.frequency.exponentialRampToValueAtTime(540, now + 0.3);
-      osc.frequency.exponentialRampToValueAtTime(60, now + 0.6);
 
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      // 1. Iconic Anime Distorted Resonant Sweep (VWWW-KOOOM Alien Gravity Warp)
+      const oscWarp = this.ctx.createOscillator();
+      const filterWarp = this.ctx.createBiquadFilter();
+      const gainWarp = this.ctx.createGain();
 
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.6);
+      oscWarp.type = 'sawtooth';
+      oscWarp.frequency.setValueAtTime(480, now);
+      oscWarp.frequency.exponentialRampToValueAtTime(90, now + 0.38);
+
+      filterWarp.type = 'bandpass';
+      filterWarp.Q.setValueAtTime(14, now);
+      filterWarp.frequency.setValueAtTime(1800, now);
+      filterWarp.frequency.exponentialRampToValueAtTime(220, now + 0.35);
+      filterWarp.frequency.exponentialRampToValueAtTime(60, now + 0.75);
+
+      gainWarp.gain.setValueAtTime(0.55, now);
+      gainWarp.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+
+      oscWarp.connect(filterWarp);
+      filterWarp.connect(gainWarp);
+      gainWarp.connect(this.ctx.destination);
+
+      oscWarp.start(now);
+      oscWarp.stop(now + 0.75);
+
+      // 2. Heavy Sub-Bass Gravity Plunge (Sub-woof 3000G shift impact)
+      const oscBass = this.ctx.createOscillator();
+      const gainBass = this.ctx.createGain();
+      oscBass.type = 'sine';
+      oscBass.frequency.setValueAtTime(180, now);
+      oscBass.frequency.exponentialRampToValueAtTime(28, now + 0.55);
+
+      gainBass.gain.setValueAtTime(0.65, now);
+      gainBass.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+
+      oscBass.connect(gainBass);
+      gainBass.connect(this.ctx.destination);
+
+      oscBass.start(now);
+      oscBass.stop(now + 0.55);
+
+      // 3. Metallic Gravitational Resonant Ring (Space-time warping chime)
+      const oscRing = this.ctx.createOscillator();
+      const gainRing = this.ctx.createGain();
+      oscRing.type = 'triangle';
+      oscRing.frequency.setValueAtTime(840, now);
+      oscRing.frequency.exponentialRampToValueAtTime(1260, now + 0.15);
+      oscRing.frequency.exponentialRampToValueAtTime(320, now + 0.65);
+
+      gainRing.gain.setValueAtTime(0.001, now);
+      gainRing.gain.setValueAtTime(0.38, now + 0.05);
+      gainRing.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+      oscRing.connect(gainRing);
+      gainRing.connect(this.ctx.destination);
+
+      oscRing.start(now);
+      oscRing.stop(now + 0.65);
     } catch {
       // Audio guard
     }
   }
 
-  // C-Moon Surface Inversion Strike
+  // C-Moon Surface Inversion Strike (Twisting organic distortion crunch)
   public playCmoonInversion() {
     if (this.isMuted) return;
     this.init();
@@ -1250,25 +1322,48 @@ class SoundSynthesizer {
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.3);
+      // Inversion pitch crunch
+      const osc1 = this.ctx.createOscillator();
+      const filter = this.ctx.createBiquadFilter();
+      const gain1 = this.ctx.createGain();
 
-      gain.gain.setValueAtTime(0.42, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(95, now);
+      osc1.frequency.exponentialRampToValueAtTime(740, now + 0.18);
+      osc1.frequency.exponentialRampToValueAtTime(120, now + 0.35);
 
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.3);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1600, now);
+      filter.frequency.exponentialRampToValueAtTime(300, now + 0.35);
+
+      gain1.gain.setValueAtTime(0.5, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      osc1.connect(filter);
+      filter.connect(gain1);
+      gain1.connect(this.ctx.destination);
+
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+
+      // Deep visceral impact
+      const osc2 = this.ctx.createOscillator();
+      const gain2 = this.ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(220, now);
+      osc2.frequency.exponentialRampToValueAtTime(35, now + 0.22);
+      gain2.gain.setValueAtTime(0.45, now);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc2.connect(gain2);
+      gain2.connect(this.ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.22);
     } catch {
       // Audio guard
     }
   }
 
-  // Made in Heaven Extreme Acceleration Rush
+  // Made in Heaven Extreme Acceleration Rush (Ticking clock + Supersonic rush)
   public playMiHAcceleration() {
     if (this.isMuted) return;
     this.init();
@@ -1276,19 +1371,37 @@ class SoundSynthesizer {
 
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(300, now);
-      osc.frequency.exponentialRampToValueAtTime(3200, now + 0.28);
+      // Rapid clock tick flutter
+      for (let t = 0; t < 5; t++) {
+        const tickTime = now + t * 0.045;
+        const oscTick = this.ctx.createOscillator();
+        const gainTick = this.ctx.createGain();
+        oscTick.type = 'square';
+        oscTick.frequency.setValueAtTime(1800 + t * 200, tickTime);
+        oscTick.frequency.exponentialRampToValueAtTime(400, tickTime + 0.025);
+        gainTick.gain.setValueAtTime(0.25, tickTime);
+        gainTick.gain.exponentialRampToValueAtTime(0.001, tickTime + 0.025);
+        oscTick.connect(gainTick);
+        gainTick.connect(this.ctx.destination);
+        oscTick.start(tickTime);
+        oscTick.stop(tickTime + 0.025);
+      }
 
-      gain.gain.setValueAtTime(0.38, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      // Supersonic ascension sweep
+      const oscSweep = this.ctx.createOscillator();
+      const gainSweep = this.ctx.createGain();
+      oscSweep.type = 'sawtooth';
+      oscSweep.frequency.setValueAtTime(340, now);
+      oscSweep.frequency.exponentialRampToValueAtTime(3600, now + 0.32);
 
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.28);
+      gainSweep.gain.setValueAtTime(0.42, now);
+      gainSweep.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      oscSweep.connect(gainSweep);
+      gainSweep.connect(this.ctx.destination);
+
+      oscSweep.start(now);
+      oscSweep.stop(now + 0.35);
     } catch {
       // Audio guard
     }
@@ -1296,65 +1409,70 @@ class SoundSynthesizer {
 
   // Pucci Whitesnake Pistol Shot
   public playPucciGunshot() {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.ctx) return;
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(800, now);
-      osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
-      gain.gain.setValueAtTime(0.4, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.12);
-    } catch {}
+    this.playPucciPistol();
   }
 
-  // Pucci Whitesnake Acid Melt Sizzling
+  // Pucci Whitesnake Acid Melt Sizzling (Boiling toxic chemical hiss & bubbling vapor pops)
   public playAcidMelt() {
     if (this.isMuted) return;
     this.init();
     if (!this.ctx) return;
     try {
       const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(450, now);
-      osc.frequency.linearRampToValueAtTime(220, now + 0.25);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.25);
+
+      // 1. Sizzling white-noise chemical dissolve
+      const bufferSize = this.ctx.sampleRate * 0.35;
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * 0.7;
+      }
+
+      const whiteNoise = this.ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.setValueAtTime(6, now);
+      filter.frequency.setValueAtTime(2400, now);
+      filter.frequency.exponentialRampToValueAtTime(4200, now + 0.15);
+      filter.frequency.exponentialRampToValueAtTime(900, now + 0.35);
+
+      const gainNoise = this.ctx.createGain();
+      gainNoise.gain.setValueAtTime(0.4, now);
+      gainNoise.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+      whiteNoise.connect(filter);
+      filter.connect(gainNoise);
+      gainNoise.connect(this.ctx.destination);
+
+      whiteNoise.start(now);
+      whiteNoise.stop(now + 0.35);
+
+      // 2. Boiling digestive bubble pops
+      for (let b = 0; b < 3; b++) {
+        const bubbleTime = now + 0.04 + b * 0.08;
+        const oscBubble = this.ctx.createOscillator();
+        const gainBubble = this.ctx.createGain();
+        oscBubble.type = 'sine';
+        oscBubble.frequency.setValueAtTime(480 + b * 120, bubbleTime);
+        oscBubble.frequency.exponentialRampToValueAtTime(140, bubbleTime + 0.05);
+
+        gainBubble.gain.setValueAtTime(0.28, bubbleTime);
+        gainBubble.gain.exponentialRampToValueAtTime(0.001, bubbleTime + 0.05);
+
+        oscBubble.connect(gainBubble);
+        gainBubble.connect(this.ctx.destination);
+
+        oscBubble.start(bubbleTime);
+        oscBubble.stop(bubbleTime + 0.05);
+      }
     } catch {}
   }
 
   // Pucci 14 Words Chanting Sound
-  public playPucciChant() {
-    if (this.isMuted) return;
-    this.init();
-    if (!this.ctx) return;
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(280 + Math.random() * 60, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
-      gain.gain.setValueAtTime(0.22, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.18);
-    } catch {}
+  public playPucciChant(step: number = 1) {
+    this.play14WordsChant(step);
   }
 
   // Pucci Evolution Chime
@@ -1388,14 +1506,14 @@ class SoundSynthesizer {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.09);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
       osc.connect(gain);
       gain.connect(this.ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.08);
+      osc.stop(now + 0.09);
     } catch {}
   }
 
@@ -1817,6 +1935,409 @@ class SoundSynthesizer {
       gain.connect(this.ctx.destination);
       osc.start(now);
       osc.stop(now + 1.5);
+    } catch {}
+  }
+
+  // Arabian Fat & The Sun Sounds (Part 3: Stardust Crusaders)
+  public playSunLaser() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1400, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.16);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch {}
+  }
+
+  public playSunHeatwave() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.8);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.0);
+    } catch {}
+  }
+
+  public playMirrorShatter() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Glass crack & shatter frequencies
+      const freqs = [1800, 2400, 3100, 4200, 950];
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.02);
+        osc.frequency.exponentialRampToValueAtTime(120, now + idx * 0.02 + 0.25);
+        gain.gain.setValueAtTime(0.3, now + idx * 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.02 + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + idx * 0.02);
+        osc.stop(now + idx * 0.02 + 0.3);
+      });
+    } catch {}
+  }
+
+  public playArabiaFatPanic() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(700, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.35);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch {}
+  }
+
+  public playArabiaFatChuckle() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const pitches = [520, 680, 520, 720];
+      pitches.forEach((pitch, i) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(pitch, now + i * 0.09);
+        gain.gain.setValueAtTime(0.2, now + i * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.07);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + i * 0.09);
+        osc.stop(now + i * 0.09 + 0.07);
+      });
+    } catch {}
+  }
+
+  // --- MICHAEL JUNISTER (GHOST: HAT PRICE) SYNTHESIZED SFX ---
+  public playMichaelGoldAura() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Resonant shimmering golden harmonic chord
+      const freqs = [330, 440, 554.37, 659.25, 880];
+      freqs.forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.25, now + 0.45);
+        gain.gain.setValueAtTime(0.12 / (idx + 1), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now);
+        osc.stop(now + 0.55);
+      });
+    } catch {}
+  }
+
+  public playMichaelPalmThrust() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Deep kinetic shockwave thump + air pressure snap
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.22);
+      gain.gain.setValueAtTime(0.5, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.25);
+
+      // High kinetic snap
+      const oscSnap = this.ctx.createOscillator();
+      const gainSnap = this.ctx.createGain();
+      oscSnap.type = 'triangle';
+      oscSnap.frequency.setValueAtTime(480, now);
+      oscSnap.frequency.exponentialRampToValueAtTime(120, now + 0.08);
+      gainSnap.gain.setValueAtTime(0.35, now);
+      gainSnap.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      oscSnap.connect(gainSnap);
+      gainSnap.connect(this.ctx.destination);
+      oscSnap.start(now);
+      oscSnap.stop(now + 0.09);
+    } catch {}
+  }
+
+  public playMichaelCounter() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High flash-step warp swoosh
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, now);
+      osc.frequency.exponentialRampToValueAtTime(980, now + 0.09);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch {}
+  }
+
+  public playMichaelAxeKick() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High rising whistle into massive ground slam
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(50, now + 0.22);
+      gain.gain.setValueAtTime(0.45, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.28);
+    } catch {}
+  }
+
+  public playMichaelUltimate() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Multi-layer hypersonic kinetic blitz roar + gold chime
+      [220, 440, 660, 880, 1100].forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = idx % 2 === 0 ? 'sawtooth' : 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.35 + idx * 0.04);
+        gain.gain.setValueAtTime(0.18, now + idx * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45 + idx * 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + 0.45 + idx * 0.04);
+      });
+    } catch {}
+  }
+
+  public playGeorgeGallop() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Rhythmic triple-step hoofbeat impact
+      [0, 0.08, 0.14].forEach((delay) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(110, now + delay);
+        osc.frequency.exponentialRampToValueAtTime(30, now + delay + 0.06);
+        gain.gain.setValueAtTime(0.4, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.07);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.07);
+      });
+    } catch {}
+  }
+
+  public playGeorgeNeigh() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High energetic horse neigh vibrato call
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.linearRampToValueAtTime(820, now + 0.15);
+      osc.frequency.linearRampToValueAtTime(640, now + 0.3);
+      osc.frequency.linearRampToValueAtTime(950, now + 0.45);
+      osc.frequency.exponentialRampToValueAtTime(300, now + 0.65);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.2);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.7);
+    } catch {}
+  }
+
+  // --- PERSTEIN (WALLY WABLE & WABLE THE METAL CUTTER) SOUNDS ---
+  public playPersteinChainWhip() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Metallic chain link rattle + sharp supersonic whip crack
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(850, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.14);
+      gain.gain.setValueAtTime(0.4, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.18);
+
+      // Metallic high ring
+      const oscRing = this.ctx.createOscillator();
+      const gainRing = this.ctx.createGain();
+      oscRing.type = 'triangle';
+      oscRing.frequency.setValueAtTime(1600, now);
+      oscRing.frequency.exponentialRampToValueAtTime(900, now + 0.22);
+      gainRing.gain.setValueAtTime(0.2, now);
+      gainRing.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      oscRing.connect(gainRing);
+      gainRing.connect(this.ctx.destination);
+      oscRing.start(now);
+      oscRing.stop(now + 0.25);
+    } catch {}
+  }
+
+  public playPersteinChainShred() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High RPM drive chain motor buzz / rapid cutting teeth grind
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(420 + Math.random() * 120, now);
+      osc.frequency.linearRampToValueAtTime(780, now + 0.08);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch {}
+  }
+
+  public playPersteinSpark() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // High friction metallic spark burst and flame hiss
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1200, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.18);
+      gain.gain.setValueAtTime(0.35, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch {}
+  }
+
+  public playPersteinDeflection() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Heavy harmonic steel deflection chime / barrier resonance
+      [880, 1320, 1760, 2200].forEach((freq, i) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.9, now + 0.35);
+        gain.gain.setValueAtTime(0.25 / (i + 1), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      });
+    } catch {}
+  }
+
+  public playPersteinUltimate() {
+    if (this.isMuted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      // Massive swirling 70m chain vortex storm into silence
+      [220, 330, 440, 660, 990].forEach((freq, idx) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+        osc.frequency.linearRampToValueAtTime(freq * 2.2, now + 0.4 + idx * 0.05);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6 + idx * 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx!.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + 0.6 + idx * 0.05);
+      });
     } catch {}
   }
 }

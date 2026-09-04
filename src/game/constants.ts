@@ -266,7 +266,7 @@ export const TOORU_CALAMITY_COUNTER_COST = 35;
 export const TOORU_CALAMITY_COUNTER_COOLDOWN = 220;
 
 export const TOORU_CALAMITY_RAIN_DURATION = 180; // 3 seconds rain duration
-export const TOORU_ULTIMATE_DURATION = 130; // ~2.1 seconds ultimate duration (reduced from 280 to prevent infinite lock)
+export const TOORU_ULTIMATE_DURATION = 160; // ~2.7 seconds ultimate highway rush duration
 export const TOORU_CALAMITY_RAIN_TICK_DAMAGE = 6;
 export const TOORU_CALAMITY_RAIN_SKILL_COST = 30;
 export const TOORU_CALAMITY_RAIN_SKILL_COOLDOWN = 180;
@@ -321,6 +321,7 @@ export const PUCCI_MEMORY_DISC_DAMAGE = PUCCI_DISC_EXTRACT_DAMAGE;
 export const PUCCI_MEMORY_DISC_COST = PUCCI_DISC_EXTRACT_COST;
 export const PUCCI_MEMORY_DISC_COOLDOWN = PUCCI_DISC_EXTRACT_COOLDOWN;
 
+export const PUCCI_ACID_MELT_DAMAGE = 140;
 export const PUCCI_ACID_MELT_DAMAGE_TICK = 9;
 export const PUCCI_ACID_MELT_DURATION = 300; // 5 seconds
 export const PUCCI_ACID_MELT_COST = 25;
@@ -437,7 +438,102 @@ export const VALENTINE_PISTOL_DAMAGE = 55;
 export const VALENTINE_PARADOX_TRUE_DAMAGE = 650; // Massive Armor-Ignoring True Damage on Paradox Annihilation Collision
 export const VALENTINE_LIFE_INSURANCE_HEAL_PCT = 0.35; // 35% Max HP restoration upon swapping with a clone
 
+// ARABIAN FAT & THE SUN (PART 3: STARDUST CRUSADERS) CONSTANTS
+export const SUN_TEMPERATURE_RISE_RATE = 0.08; // Steady heat accumulation
+export const SUN_MAX_TEMPERATURE = 100;
+export const SUN_BASE_LASER_INTERVAL = 80; // ~1.3s standard firing
+export const SUN_FAST_LASER_INTERVAL = 25; // ~0.4s rapid firing when enemy is moving/dashing/jumping
+export const SUN_LASER_DAMAGE = 26;
+export const SUN_LASER_SPEED = 24;
+export const SUN_BOMBARDMENT_DAMAGE = 42;
+export const SUN_BOMBARDMENT_COUNT = 5;
+export const SUN_BOMBARDMENT_COST = 30;
+export const SUN_BOMBARDMENT_COOLDOWN = 140;
+export const SUN_SUPERNOVA_DAMAGE = 130;
+export const SUN_SUPERNOVA_COST = 75;
+export const SUN_SUPERNOVA_COOLDOWN = 400;
+export const SUN_MIRAGE_TRAP_COST = 25;
+export const SUN_MIRAGE_TRAP_COOLDOWN = 120;
+export const SUN_MIRAGE_DURATION = 180; // 3.0s confusion / illusion
+export const SUN_MIRROR_MAX_HP = 250;
+export const SUN_EXPOSED_PANIC_HP = 1000;
+
+// MICHAEL JUNISTER SPECIFIC COMBAT & SKILL CONSTANTS (GHOST: HAT PRICE)
+export const MICHAEL_PALM_THRUST_DAMAGE = 185;
+export const MICHAEL_PALM_THRUST_COST = 20;
+export const MICHAEL_PALM_THRUST_COOLDOWN = 80;
+export const MICHAEL_PALM_THRUST_DASH_SPEED = 14.5;
+
+export const MICHAEL_COUNTER_DURATION = 40;
+export const MICHAEL_COUNTER_DAMAGE = 230;
+export const MICHAEL_COUNTER_COST = 25;
+export const MICHAEL_COUNTER_COOLDOWN = 140;
+
+export const MICHAEL_AXE_KICK_DAMAGE = 195;
+export const MICHAEL_AXE_KICK_COST = 25;
+export const MICHAEL_AXE_KICK_COOLDOWN = 110;
+
+export const MICHAEL_OVERDRIVE_DURATION = 360; // 6.0 seconds (360 frames)
+export const MICHAEL_OVERDRIVE_COST = 35;
+export const MICHAEL_OVERDRIVE_COOLDOWN = 280;
+
+export const MICHAEL_BARRAGE_DAMAGE = 28;
+export const MICHAEL_BARRAGE_COST = 35;
+export const MICHAEL_BARRAGE_COOLDOWN = 150;
+
+export const MICHAEL_ULTIMATE_DAMAGE = 400;
+export const MICHAEL_ULTIMATE_COST = 75;
+export const MICHAEL_ULTIMATE_COOLDOWN = 420;
+
+// WALLY WABLE / PERSTEIN CONSTANTS (GHOST: WABLE THE METAL CUTTER)
+export const PERSTEIN_CHAIN_WHIP_DAMAGE = 140;
+export const PERSTEIN_CHAIN_WHIP_RANGE = 850; // True 70-meter high-tensile motorcycle drive chain span
+export const PERSTEIN_CHAIN_WHIP_COST = 25;
+export const PERSTEIN_CHAIN_WHIP_COOLDOWN = 110;
+
+export const PERSTEIN_SHRED_DAMAGE_PER_HIT = 28;
+export const PERSTEIN_SHRED_COST = 35;
+export const PERSTEIN_SHRED_COOLDOWN = 160;
+
+export const PERSTEIN_SPARK_DAMAGE = 175;
+export const PERSTEIN_SPARK_COST = 30;
+export const PERSTEIN_SPARK_COOLDOWN = 140;
+
+export const PERSTEIN_DEFLECTION_DURATION = 240; // 4 seconds
+export const PERSTEIN_DEFLECTION_COST = 40;
+export const PERSTEIN_DEFLECTION_COOLDOWN = 280;
+
+export const PERSTEIN_FLESH_TEAR_DAMAGE = 260; // True Damage
+export const PERSTEIN_FLESH_TEAR_COST = 50;
+export const PERSTEIN_FLESH_TEAR_COOLDOWN = 240;
+
+export const PERSTEIN_ULTIMATE_DAMAGE = 420;
+export const PERSTEIN_ULTIMATE_COST = 75;
+export const PERSTEIN_ULTIMATE_COOLDOWN = 450;
+
 export const MAPS: MapDef[] = [
+  {
+    id: 'vancouver_port',
+    name: 'Vancouver Rainy Port',
+    location: 'Gastown, Vancouver 1978',
+    theme: 'Quiet Coastal Docks (The Silence After The Storm)',
+    skyGradient: ['#1e293b', '#334155', '#475569'],
+    floorColors: ['#0f172a', '#1e293b', '#020617'],
+    lineColor: '#38bdf8',
+    accentColor: '#94a3b8',
+    landmarkType: 'bridge',
+  },
+  {
+    id: 'arabian_desert',
+    name: 'Arabian Desert Dunes',
+    location: 'Arabian Peninsula Desert',
+    theme: 'Scorching Mirage Desert (The Sun Encounter)',
+    skyGradient: ['#7c2d12', '#b45309', '#f59e0b'],
+    floorColors: ['#d97706', '#92400e', '#451a03'],
+    lineColor: '#fde68a',
+    accentColor: '#f59e0b',
+    landmarkType: 'suburb',
+  },
   {
     id: 'cairo_bridge',
     name: 'Cairo Night Bridge',

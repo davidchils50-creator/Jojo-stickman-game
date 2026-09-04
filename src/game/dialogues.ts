@@ -3146,6 +3146,572 @@ export function getIntroDialogue(playerCharId: string, enemyCharId: string): Mat
     };
   }
 
+  // MICHAEL JUNISTER VS FUNNY VALENTINE
+  if (pairKey === 'michael_vs_funny_valentine' || pairKey === 'funny_valentine_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_funny_valentine',
+      title: 'NUMBER ONE JOCKEY VS PRESIDENTIAL AMBITION',
+      subtitle: '先頭を駆ける者と国家の意志 (THE NUMBER ONE RUNNER VS NATIONAL WILL)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター (No.1 Jockey)',
+          quoteJapanese: '大統領さんよ、あんたの長いお説教を聞いてる暇はないんだ。オレとジョージの前を走る奴は、誰であれ土煙を吸わせて置き去りにするだけさ。',
+          quoteTranslation: '"Mr. President, I don\'t have time to listen to your lengthy sermons. Anyone who tries to run ahead of me and George is just going to choke on our dust."',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'funny_valentine',
+          speakerName: 'Funny Valentine',
+          standName: 'Dirty Deeds Done Dirt Cheap (D4C)',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ファニー・ヴァレンタイン大統領',
+          quoteJapanese: '傲慢な若造め… お前はただのレースを走っているつもりかもしれんが、歴史の頂点に立つのはこの私だ！ 「最初のナプキン」は譲らん！',
+          quoteTranslation: '"Insolent brat... You think you are merely running a race, but it is I who shall stand atop history! I will not surrender the \'first napkin\'!"',
+          expression: 'menacing'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'フッ、偉そうに語る割には、オレの背中すら拝めそうにないな。ゴールまで指くわえて見てな！ WRAAAA!!',
+          quoteTranslation: '"Heh, for someone talking so big, you won\'t even catch a glimpse of my back. Stand back and watch me take the finish line! WRAAAA!!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'funny_valentine',
+          speakerName: 'Funny Valentine',
+          standName: 'D4C - Love Train',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '第23代米合衆国大統領',
+          quoteJapanese: '我が心と行動に一点の曇りなし………！ お前のその傲慢、隣の世界の塵に変えてくれよう！ ドジャア～～ン！',
+          quoteTranslation: '"My heart and actions are utterly unclouded...! I will scatter your arrogance into the dust of an adjacent world! DOJYAA~~N!"',
+          expression: 'confident'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS DIO
+  if (pairKey === 'michael_vs_dio' || pairKey === 'dio_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_dio',
+      title: 'SUPREME CHAMPION VS ANCIENT EMPEROR',
+      subtitle: '頂点の誇りと夜の帝王 (CHAMPION PRIDE VS EMPEROR OF THE NIGHT)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター (No.1)',
+          quoteJapanese: '世界を支配する帝王様か…？ 笑わせるなよ。オレから見れば、ただの時代遅れの老いぼれにしか見えないぜ。',
+          quoteTranslation: '"An emperor who rules the world...? Don\'t make me laugh. From where I stand, you\'re just an outdated fossil."',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'dio',
+          speakerName: 'DIO',
+          standName: 'THE WORLD',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '帝王 DIO',
+          quoteJapanese: 'フハハハッ！ このDIOの前で減らず口を叩く青二才め！ その生意気な舌ごと引き裂いてミンチにしてやるわ！',
+          quoteTranslation: '"Fuhahaha! Running your mouth before DIO, you insolent whelp?! I will rip you apart starting with that smart tongue!"',
+          expression: 'angry'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '吠えるのは後にしてくれ。オレが勝つのは最初から決まってんだよ！ WRAAAA!!',
+          quoteTranslation: '"Save the barking for later. It was decided from the very start that I\'m taking this win! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS JOTARO KUJO
+  if (pairKey === 'michael_vs_jotaro' || pairKey === 'jotaro_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_jotaro',
+      title: 'SPEED & INSTINCT VS UNBROKEN RESOLVE',
+      subtitle: '若き天才と不動の拳 (YOUNG GENIUS VS UNYIELDING FISTS)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'おいおい、そんな怖い顔して睨みつけるなよ。オレとやる前から負けるのが分かってビビってんのか？',
+          quoteTranslation: '"Hey now, don\'t glare at me with such a scary face. Are you already terrified because you know you\'re going to lose to me?"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'jotaro',
+          speakerName: 'Jotaro Kujo',
+          standName: 'Star Platinum',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '空条 承太郎',
+          quoteJapanese: 'やれやれだぜ… くだらねえ口を叩くガキだ。てめーのその減らず口を、この拳で叩き直してやる。',
+          quoteTranslation: '"Good grief... What a loudmouth brat. I\'ll fix that smug mouth of yours with this fist."',
+          expression: 'menacing'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'やれるもんならやってみな！ 一瞬で置き去りにして、顔面をへし折ってやる！ WRAAAA!!',
+          quoteTranslation: '"Try it if you can! I\'ll leave you behind in a flash and smash your face in! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS DIPEZ
+  if (pairKey === 'michael_vs_dipez' || pairKey === 'dipez_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_dipez',
+      title: 'TRACK CHAMPION VS CALCULATING MIND',
+      subtitle: '勝負師の勘と冷徹な演算 (CHAMPION INSTINCT VS COLD CALCULATION)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター (No.1 Jockey)',
+          quoteJapanese: 'おいディペズ、またブツブツと小難しい講釈を垂れてるのか？ 勝負ってのはな、最後に立ってた奴が1番なんだよ。',
+          quoteTranslation: '"Hey Dipez, still muttering those overly complicated theories? In a real match, the one left standing at the end is number one."',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'dipez',
+          speakerName: 'Dipez',
+          standName: 'Photon Control',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ディペズ',
+          quoteJapanese: '傲慢な騎手め。己の勘を過信した愚か者がどうなるか、光の速度で教えてやる。',
+          quoteTranslation: '"Arrogant jockey. I\'ll show you at the speed of light what happens to fools who rely solely on overconfident instinct."',
+          expression: 'menacing'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '講釈は聞き飽きたぜ。オレの拳をそのツラに叩き込んで黙らせてやる！ WRAAAA!!',
+          quoteTranslation: '"I\'m sick of your lectures. I\'ll drive my fist straight into your face and shut you up for good! WRAAAA!!"',
+          expression: 'confident'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS JONATHAN JOESTAR
+  if (pairKey === 'michael_vs_jonathan' || pairKey === 'jonathan_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_jonathan',
+      title: 'SUPREME EQUESTRIAN VS GENTLEMAN RESOLVE',
+      subtitle: '勝負師の閃光と紳士の誇り (CHAMPION FLASH VS GENTLEMAN PRIDE)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '英国の貴族様か… その生真面目な顔、勝負の世界じゃ何の役にも立たないぜ！',
+          quoteTranslation: '"A British noble, huh? That serious face of yours won\'t do you any good in a real match!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'jonathan',
+          speakerName: 'Jonathan Joestar',
+          standName: 'Hamon (Overdrive)',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ジョナサン・ジョースター',
+          quoteJapanese: '君の走りと波紋の如き熱気… 確かに凄まじい！ だが紳士の誇りをかけた私の拳は決して折れない！',
+          quoteTranslation: '"Your speed and heat are astounding! But my fists, fueled by a gentleman\'s pride, will never break!"',
+          expression: 'angry'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '誇りなんて言葉じゃ腹は膨らまねえ！ ジョージ、あの高貴な体を土煙まみれにしてやれ！ WRAAAA!!',
+          quoteTranslation: '"\'Pride\' won\'t fill an empty stomach! George, let\'s cover that noble body in dust! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS JOSEPH JOESTAR
+  if (pairKey === 'michael_vs_joseph' || pairKey === 'joseph_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_joseph',
+      title: 'EQUESTRIAN GENIUS VS TRICKSTER TACTICIAN',
+      subtitle: '天才騎手と策士の駆け引き (GENIUS JOCKEY VS CUNNING TRICKSTER)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'お前のそのニヤニヤしたツラ、最初から気に食わねえんだよ。イカサマでも仕掛けるつもりか？',
+          quoteTranslation: '"I\'ve hated that smug grin of yours right from the start. Planning to pull a cheap trick?"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'joseph',
+          speakerName: 'Joseph Joestar',
+          standName: 'Hamon & Hermit Purple',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ジョセフ・ジョースター',
+          quoteJapanese: 'ヘッ！ 次にお前は『オレとジョージの足に追いつける奴はいねえ！』と言う！',
+          quoteTranslation: '"Heh! Next you\'re gonna say: \'There isn\'t a single soul who can catch up to me and George!\'"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'オレとジョージの足に追いつける奴はいねえ！ …ハッ？！ テメェ、何をした？！',
+          quoteTranslation: '"There isn\'t a single soul who can catch up to me and George! ...HUH?! What did you just do?!"',
+          expression: 'shocked'
+        },
+        {
+          speakerId: 'joseph',
+          speakerName: 'Joseph Joestar',
+          standName: 'Hamon Overdrive',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ジョセフ・ジョースター',
+          quoteJapanese: 'ハハッ！ 馬の足が速くたって、ワイヤーの手繰り寄せには勝てねえぜ！ ハモン疾走！',
+          quoteTranslation: '"Haha! No matter how fast your horse runs, it can\'t beat a clever wire trap! Hamon Run!"',
+          expression: 'confident'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS GIORNO GIOVANNA
+  if (pairKey === 'michael_vs_giorno' || pairKey === 'giorno_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_giorno',
+      title: 'NUMBER ONE JOCKEY VS GOLDEN DREAM',
+      subtitle: '頂点の執念と黄金の夢 (TOP TENACITY VS GOLDEN DREAM)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'ギャングのボスがこのオレに勝負を挑む気か？ 黄金の夢だか知らねえが、オレのキネティック・エネルギーで粉々に砕いてやる！',
+          quoteTranslation: '"A gang boss wants to challenge me? I don\'t care about your Golden Dream, my kinetic energy will smash it to pieces!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'giorno',
+          speakerName: 'Giorno Giovanna',
+          standName: 'Gold Experience Requiem',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'ジョルノ・ジョバァーナ',
+          quoteJapanese: '僕には夢がある… そして君のその圧倒的な加速力と野心、決して嫌いではない。だが、終わりのない真実へたどり着くのは僕だ。',
+          quoteTranslation: '"I have a dream... and I don\'t dislike your overwhelming acceleration and ambition. However, it is I who will reach the truth that never ends."',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '口だけならいくらでも言えるぜ！ ゴールド・ギャル（黄金の暴風）でその夢ごと吹き飛ばしてやる！ WRAAAA!!',
+          quoteTranslation: '"Anyone can talk big! I\'ll blow away your dream along with you in a Gold Gale! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS ENRICO PUCCI
+  if (pairKey === 'michael_vs_pucci' || pairKey === 'pucci_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_pucci',
+      title: 'EQUESTRIAN ACCELERATION VS HEAVEN\'S GRAVITY',
+      subtitle: '大地を駆ける足と天国の引力 (EARTH GALLOP VS HEAVENLY GRAVITY)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '神だの引力だの、神父様がレース場に何の用だ？ 天国に行きたいなら、オレの後ろを這ってついてきな！',
+          quoteTranslation: '"God, gravity, destiny... What business does a priest have on the racetrack? If you want to go to Heaven, crawl behind me!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'pucci',
+          speakerName: 'Enrico Pucci',
+          standName: 'Made in Heaven',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'エンリコ・プッチ神父',
+          quoteJapanese: '知るがいい、ジュニスター… 人間が天国に到達するのは『引力』による必然。お前の速さもすでに『素数』の中に計算されているのだ！',
+          quoteTranslation: '"Know this, Junister... Humanity reaching Heaven is a necessity guided by \'gravity\'. Even your speed was calculated within the prime numbers!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '素数だか何だか知らねえが！ ジョージの脚力とHat Priceの運動エネルギーは、お前の神様すら置き去りにするぜ！ WRAAAA!!',
+          quoteTranslation: '"I don\'t care about your prime numbers! George\'s hooves and Hat Price\'s kinetic energy will leave even your God in the dust! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS TOORU
+  if (pairKey === 'michael_vs_tooru' || pairKey === 'tooru_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_tooru',
+      title: 'HYPERSONIC CHARGE VS PRINCIPLE OF CALAMITY',
+      subtitle: '音速の突撃と厄災の理 (HYPERSONIC CHARGE VS LAW OF CALAMITY)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'おいおい、妙な気配のするガキだな… オレの前に立つな。踏み潰されたいのか？',
+          quoteTranslation: '"Hey kid, you\'ve got a weird vibe around you... Get out of my way. Do you want to be trampled?"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'tooru',
+          speakerName: 'Tooru',
+          standName: 'Wonder of U',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '透龍 (ワンダー・オブ・U)',
+          quoteJapanese: '君は競馬のチャンピオンらしいね… でも、『追いかける』という行為そのものが厄災を招くという理を、君の馬は理解しているのかな？',
+          quoteTranslation: '"You seem to be a horse racing champion... But does your horse understand that the very act of \'pursuing\' brings calamity?"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '厄災だと…？！ ふざけるな！ どんな災厄が来ようと、超音波を超える速度で突き破るだけだ！ 踏みつぶせ、ジョージ！！',
+          quoteTranslation: '"Calamity...?! Don\'t make me laugh! Whatever disaster comes, we\'ll blast right through it faster than sound! Trample him, George!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS JOSUKE HIGASHIKATA (PART 8) / GAPPY
+  if (pairKey === 'michael_vs_gappy' || pairKey === 'gappy_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_gappy',
+      title: 'KINETIC ENERGY VS SOFT & WET BUBBLES',
+      subtitle: '運動エネルギーと奪うシャボン玉 (KINETIC IMPACT VS PLUNDERING BUBBLES)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '水玉の泡を飛ばす変な奴だな… 泡でオレのジョージの足を止めるつもりか？！',
+          quoteTranslation: '"A weird guy throwing water bubbles around... You think bubbles can stop my George\'s hooves?!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'gappy',
+          speakerName: 'Josuke Higashikata (Part 8)',
+          standName: 'Soft & Wet: Go Beyond',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '東方 仗助',
+          quoteJapanese: '僕は自分が誰なのか探している… だが君の馬のスピードは本物だ。僕の『シャボン玉』から奪えるものがあるか、試させてもらう。',
+          quoteTranslation: '"I am searching for who I am... But your horse\'s speed is real. Let me see if there is something my bubbles can take from you."',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '奪えるもんなら奪ってみろ！ オレのHat Priceは衝撃を溜め込むほど強くなるんだよ！ WRAAAA!!',
+          quoteTranslation: '"Try taking it if you can! My Hat Price grows stronger the more impact it absorbs! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS ARABIAN FAT (THE SUN)
+  if (pairKey === 'michael_vs_arabian_fat' || pairKey === 'arabian_fat_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_arabian_fat',
+      title: 'NUMBER ONE JOCKEY VS THE SCORCHING SUN',
+      subtitle: '疾走する騎手と灼熱の太陽 (RUNNING JOCKEY VS BURNING SUN)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'クソッ、なんだこの異常な暑さは？！ 偽物の太陽を浮かべて気取ってんじゃねえぞ、デブ野郎！',
+          quoteTranslation: '"Dammit, what\'s with this abnormal heat?! Don\'t act cool floating a fake sun up there, you fat bastard!"',
+          expression: 'angry'
+        },
+        {
+          speakerId: 'arabian_fat',
+          speakerName: 'Arabian Fat',
+          standName: 'The Sun',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: 'アラビア・ファッツ',
+          quoteJapanese: 'ヒヒヒッ！ 砂漠の太陽は容赦ないぞ！ お前の自慢の馬も、干からびて熱中症で倒れるのがオチだな！',
+          quoteTranslation: '"Heeheehee! The desert sun knows no mercy! Your prized horse will just shrivel up and collapse from heatstroke!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: 'ジョージをバカにするな！ 太陽の熱すらキネティック・メーターに変換して、そのツラに叩き込んでやるぜ！ WRAAAA!!',
+          quoteTranslation: '"Don\'t insult George! We\'ll convert even the sun\'s heat into kinetic energy and drive it right into your face! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS VAMPIRE
+  if (pairKey === 'michael_vs_vampire' || pairKey === 'vampire_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_vampire',
+      title: 'EQUESTRIAN CHAMPION VS NOCTURNAL VAMPIRE',
+      subtitle: '騎手と夜の吸血鬼 (JOCKEY VS NIGHT VAMPIRE)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '吸血鬼のバケモノか… オレとジョージの踏みつけの生贄にはちょうどいいぜ！',
+          quoteTranslation: '"A vampire monster, huh... You\'re the perfect sacrifice to be trampled under me and George!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'vampire',
+          speakerName: 'Vampire Minion',
+          standName: 'Vampiric Claws',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '屍生人 (ヴァンパイア)',
+          quoteJapanese: 'ヒヒッ… 人間の分せいで馬に跨がり威張るな！ その生き血、一滴残らず吸い尽くしてやるわ！',
+          quoteTranslation: '"Heehee... Don\'t posture riding a horse, tiny human! I\'ll drain every last drop of your fresh blood!"',
+          expression: 'angry'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '血を吸う前に、その頭蓋骨をジョージの蹄で粉々に砕いてやる！ WRAAAA!!',
+          quoteTranslation: '"Before you suck any blood, George\'s hooves will shatter your skull to dust! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
+  // MICHAEL JUNISTER VS STICKMAN
+  if (pairKey === 'michael_vs_stickman' || pairKey === 'stickman_vs_michael') {
+    const isPlayerMichael = playerCharId === 'michael';
+    return {
+      id: 'michael_vs_stickman',
+      title: 'NUMBER ONE JOCKEY VS SILENT STICKMAN',
+      subtitle: '頂点の騎手と無口な棒人間 (JOCKEY VS SILENT STICKMAN)',
+      lines: [
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '棒人間だと…？ ふざけた見た目しやがって、オレのウォーミングアップにもならねえな！',
+          quoteTranslation: '"A stickman...? What a ridiculous look, you won\'t even serve as a warmup for me!"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'stickman',
+          speakerName: 'Stickman Fighter',
+          standName: 'Stick Aura',
+          side: isPlayerMichael ? 'enemy' : 'player',
+          japaneseTitle: '棒人間ファイター',
+          quoteJapanese: '（静かなプレッシャーと共に素早い構えを取る）',
+          quoteTranslation: '"(Silently adopts a swift fighting stance with intense pressure)"',
+          expression: 'confident'
+        },
+        {
+          speakerId: 'michael',
+          speakerName: 'Michael Junister',
+          standName: 'Hat Price',
+          side: isPlayerMichael ? 'player' : 'enemy',
+          japaneseTitle: 'マイケル・ジュニスター',
+          quoteJapanese: '言葉も喋れねえのか！ 一瞬で吹き飛ばしてやるぜ！ WRAAAA!!',
+          quoteTranslation: '"Can\'t even speak?! I\'ll blow you away in a single second! WRAAAA!!"',
+          expression: 'menacing'
+        }
+      ]
+    };
+  }
+
   // DYNAMIC FALLBACK (Ensures no stickman / generic placeholders EVER appear)
   const pMeta = getCharDialogueMeta(playerCharId);
   const eMeta = getCharDialogueMeta(enemyCharId);
@@ -3310,6 +3876,16 @@ function getCharDialogueMeta(charId: string) {
         trans1: '"Aesthetics, fate... how useless. I reached here purely through blood, sweat, and calculation."',
         quote2: 'お前のような「選ばれた天才」が一番虫酸が走るんだ。光の速度で計算を終わらせてやる。',
         trans2: '"Self-proclaimed \'chosen geniuses\' like you make my skin crawl. I\'ll finish my calculations at the speed of light."'
+      };
+    case 'michael':
+      return {
+        speakerName: 'Michael Junister',
+        standName: 'Hat Price',
+        japaneseTitle: 'マイケル・ジュニスター (No.1 Jockey)',
+        quote1: 'オレとジョージの前を走れる奴なんて、この世に一人もいねえんだよ。',
+        trans1: '"There isn\'t a single soul in this world who can run ahead of me and George."',
+        quote2: '抜かせるわけねえだろ。テメェはオレの土煙でも吸ってな！ WRAAAA!!',
+        trans2: '"You think I\'ll let you pass? Choke on my dust! WRAAAA!!"'
       };
     default:
       return {

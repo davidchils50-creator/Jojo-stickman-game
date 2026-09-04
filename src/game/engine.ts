@@ -239,6 +239,7 @@ import {
   PUCCI_DISC_EXTRACT_DAMAGE,
   PUCCI_DISC_EXTRACT_COST,
   PUCCI_DISC_EXTRACT_COOLDOWN,
+  PUCCI_ACID_MELT_DAMAGE,
   PUCCI_ACID_MELT_DAMAGE_TICK,
   PUCCI_ACID_MELT_DURATION,
   PUCCI_ACID_MELT_COST,
@@ -332,6 +333,66 @@ import {
   VALENTINE_PISTOL_DAMAGE,
   VALENTINE_PARADOX_TRUE_DAMAGE,
   VALENTINE_LIFE_INSURANCE_HEAL_PCT,
+  // THE SUN & ARABIAN FAT (PART 3: STARDUST CRUSADERS)
+  SUN_TEMPERATURE_RISE_RATE,
+  SUN_MAX_TEMPERATURE,
+  SUN_BASE_LASER_INTERVAL,
+  SUN_FAST_LASER_INTERVAL,
+  SUN_LASER_DAMAGE,
+  SUN_LASER_SPEED,
+  SUN_BOMBARDMENT_DAMAGE,
+  SUN_BOMBARDMENT_COUNT,
+  SUN_BOMBARDMENT_COST,
+  SUN_BOMBARDMENT_COOLDOWN,
+  SUN_SUPERNOVA_DAMAGE,
+  SUN_SUPERNOVA_COST,
+  SUN_SUPERNOVA_COOLDOWN,
+  SUN_MIRAGE_TRAP_COST,
+  SUN_MIRAGE_TRAP_COOLDOWN,
+  SUN_MIRAGE_DURATION,
+  SUN_MIRROR_MAX_HP,
+  SUN_EXPOSED_PANIC_HP,
+  // MICHAEL JUNISTER (GHOST: HAT PRICE)
+  MICHAEL_PALM_THRUST_DAMAGE,
+  MICHAEL_PALM_THRUST_COST,
+  MICHAEL_PALM_THRUST_COOLDOWN,
+  MICHAEL_PALM_THRUST_DASH_SPEED,
+  MICHAEL_COUNTER_DURATION,
+  MICHAEL_COUNTER_DAMAGE,
+  MICHAEL_COUNTER_COST,
+  MICHAEL_COUNTER_COOLDOWN,
+  MICHAEL_AXE_KICK_DAMAGE,
+  MICHAEL_AXE_KICK_COST,
+  MICHAEL_AXE_KICK_COOLDOWN,
+  MICHAEL_OVERDRIVE_DURATION,
+  MICHAEL_OVERDRIVE_COST,
+  MICHAEL_OVERDRIVE_COOLDOWN,
+  MICHAEL_BARRAGE_DAMAGE,
+  MICHAEL_BARRAGE_COST,
+  MICHAEL_BARRAGE_COOLDOWN,
+  MICHAEL_ULTIMATE_DAMAGE,
+  MICHAEL_ULTIMATE_COST,
+  MICHAEL_ULTIMATE_COOLDOWN,
+  // WALLY WABLE / PERSTEIN
+  PERSTEIN_CHAIN_WHIP_DAMAGE,
+  PERSTEIN_CHAIN_WHIP_RANGE,
+  PERSTEIN_CHAIN_WHIP_COST,
+  PERSTEIN_CHAIN_WHIP_COOLDOWN,
+  PERSTEIN_SHRED_DAMAGE_PER_HIT,
+  PERSTEIN_SHRED_COST,
+  PERSTEIN_SHRED_COOLDOWN,
+  PERSTEIN_SPARK_DAMAGE,
+  PERSTEIN_SPARK_COST,
+  PERSTEIN_SPARK_COOLDOWN,
+  PERSTEIN_DEFLECTION_DURATION,
+  PERSTEIN_DEFLECTION_COST,
+  PERSTEIN_DEFLECTION_COOLDOWN,
+  PERSTEIN_FLESH_TEAR_DAMAGE,
+  PERSTEIN_FLESH_TEAR_COST,
+  PERSTEIN_FLESH_TEAR_COOLDOWN,
+  PERSTEIN_ULTIMATE_DAMAGE,
+  PERSTEIN_ULTIMATE_COST,
+  PERSTEIN_ULTIMATE_COOLDOWN,
 } from './constants';
 import { soundManager } from './audio';
 import { createFighter } from './fighterFactory';
@@ -640,8 +701,15 @@ export class GameEngine {
       }
     }
 
+    const playerOpponent = this.player.isParallelWorld ? (this.player.parallelEnemyClone || this.ai) : this.ai;
+
+    // CPU vs CPU Mode: Player 1 is also controlled by AI!
+    const effectivePlayerInput = this.matchConfig.mode === 'cpu_vs_cpu'
+      ? this.getAIControllerForFighter(this.player.id).update(this.player, [playerOpponent], this.matchConfig, this.activeGravityAxis, this.getArenaWidth())
+      : playerInput;
+
     // 1. UPDATE TIME STOP ENGINE & PARALLEL TIMERS (Jotaro & Dio exclusive)
-    this.updateTimeStopSystem(playerInput);
+    this.updateTimeStopSystem(effectivePlayerInput);
 
     // 2. VAMPIRE HORDE SURVIVAL MODE LOGIC (Spawns 3 vampires up to max 5 active every 12 seconds)
     if (this.matchConfig.mode === 'survival' || this.matchConfig.mode === 'team_survival') {
@@ -710,7 +778,7 @@ export class GameEngine {
       }
     }
 
-    const aiInput = overrideAiInput || this.getAIControllerForFighter(this.ai.id).update(this.ai, candidatesForAi.length > 0 ? candidatesForAi : [this.ai], this.matchConfig, this.activeGravityAxis);
+    const aiInput = overrideAiInput || this.getAIControllerForFighter(this.ai.id).update(this.ai, candidatesForAi.length > 0 ? candidatesForAi : [this.ai], this.matchConfig, this.activeGravityAxis, this.getArenaWidth());
 
     // 4. Update Both Fighters & Vampire Horde (Checking if frozen)
     const playerFrozen = this.isFighterFrozen(this.player);
@@ -723,11 +791,10 @@ export class GameEngine {
       this.teammate.isFrozenByTimeStop = teammateFrozen;
     }
 
-    const playerOpponent = this.player.isParallelWorld ? (this.player.parallelEnemyClone || this.ai) : this.ai;
     const aiOpponent = this.ai.isParallelWorld ? (this.ai.parallelEnemyClone || this.player) : targetForAi;
 
     if (!playerFrozen) {
-      this.updateFighter(this.player, playerInput, playerOpponent);
+      this.updateFighter(this.player, effectivePlayerInput, playerOpponent);
     }
     if (!aiFrozen) {
       this.updateFighter(this.ai, aiInput, aiOpponent);
@@ -744,7 +811,7 @@ export class GameEngine {
         }
       }
       const tmTarget = candidatesForTeammate[0] || this.ai;
-      const teammateInput = this.getAIControllerForFighter(this.teammate.id).update(this.teammate, candidatesForTeammate.length > 0 ? candidatesForTeammate : [this.teammate], this.matchConfig, this.activeGravityAxis);
+      const teammateInput = this.getAIControllerForFighter(this.teammate.id).update(this.teammate, candidatesForTeammate.length > 0 ? candidatesForTeammate : [this.teammate], this.matchConfig, this.activeGravityAxis, this.getArenaWidth());
       this.updateFighter(this.teammate, teammateInput, tmTarget);
     }
 
@@ -778,7 +845,7 @@ export class GameEngine {
               }
             }
           }
-          const vInput = this.getAIControllerForFighter(v.id).update(v, vCandidates.length > 0 ? vCandidates : [v], this.matchConfig, this.activeGravityAxis);
+          const vInput = this.getAIControllerForFighter(v.id).update(v, vCandidates.length > 0 ? vCandidates : [v], this.matchConfig, this.activeGravityAxis, this.getArenaWidth());
           this.updateFighter(v, vInput, vTarget);
         }
       }
@@ -915,6 +982,17 @@ export class GameEngine {
       this.timeStopState.initiator = f.id;
     }
 
+    // Freeze all active projectiles in place immediately when Time Stop triggers
+    for (const proj of this.projectiles) {
+      if (!proj.isFrozenInTime) {
+        proj.isFrozenInTime = true;
+        if (proj.baseVx === undefined || proj.baseVx === 0) proj.baseVx = proj.vx;
+        if (proj.baseVy === undefined || proj.baseVy === 0) proj.baseVy = proj.vy;
+        proj.vx = 0;
+        proj.vy = 0;
+      }
+    }
+
     const durationSec = Math.round(f.timeStopDurationMax / 60);
     const isDio = f.charId === 'dio';
     const shout = isDio 
@@ -1030,8 +1108,8 @@ export class GameEngine {
     for (const proj of this.projectiles) {
       if (proj.isFrozenInTime) {
         proj.isFrozenInTime = false;
-        proj.vx = proj.baseVx;
-        proj.vy = proj.baseVy;
+        proj.vx = proj.baseVx !== undefined ? proj.baseVx : proj.vx;
+        proj.vy = proj.baseVy !== undefined ? proj.baseVy : proj.vy;
         this.addSpark(proj.x, proj.y, '#facc15');
       }
     }
@@ -1051,6 +1129,30 @@ export class GameEngine {
 
   // --- FIGHTER UPDATE ---
   private updateFighter(f: Fighter, input: InputState, opponent: Fighter) {
+    // Auto-turn AI or idle fighters towards their opponent when not holding directional keys
+    if (opponent && opponent.hp > 0 && f.action !== 'knockdown' && f.action !== 'knockback' && f.action !== 'stun' && f.hitStun <= 0) {
+      const isAIControlled = this.matchConfig.mode === 'cpu_vs_cpu' || f.id !== 'player' || f.isClone || !!f.isBoss;
+      const isMovingDirectionally = (this.activeGravityAxis === 'right' || this.activeGravityAxis === 'left')
+        ? (input.jump || input.crouch)
+        : (input.left || input.right);
+
+      if (isAIControlled && !isMovingDirectionally) {
+        if (this.activeGravityAxis === 'right') {
+          // Right wall: facing right is UP (-Y), facing left is DOWN (+Y)
+          if (opponent.y < f.y - 10) f.facing = 'right'; // Opponent is above -> Face UP
+          else if (opponent.y > f.y + 10) f.facing = 'left'; // Opponent is below -> Face DOWN
+        } else if (this.activeGravityAxis === 'left') {
+          // Left wall: facing left is UP (-Y), facing right is DOWN (+Y)
+          if (opponent.y < f.y - 10) f.facing = 'left'; // Opponent is above -> Face UP
+          else if (opponent.y > f.y + 10) f.facing = 'right'; // Opponent is below -> Face DOWN
+        } else {
+          // Floor and ceiling: horizontal facing
+          if (opponent.x > f.x + 10) f.facing = 'right';
+          else if (opponent.x < f.x - 10) f.facing = 'left';
+        }
+      }
+    }
+
     // Cooldown reductions (Boss gets accelerated cooldown ticks!)
     const cdMult = f.isBoss ? 2.2 : 1.0;
     f.cooldowns.punch = Math.max(0, f.cooldowns.punch - cdMult);
@@ -1093,6 +1195,256 @@ export class GameEngine {
       }
     }
 
+    // ARABIAN FAT & THE SUN PASSIVE ENVIRONMENTAL SYSTEM
+    if (f.charId === 'arabian_fat') {
+      if (f.isHidingBehindMirror && f.mirrorObject && !f.mirrorObject.isDestroyed) {
+        // Absolute stillness while hiding in camouflage
+        f.vx = 0;
+        f.vy = 0;
+        f.invulnerableTimer = Math.max(f.invulnerableTimer, 2);
+
+        f.mirrorObject.glintTimer = ((f.mirrorObject.glintTimer || 0) + 1) % 120;
+        if (f.mirrorObject.hitFlashTimer && f.mirrorObject.hitFlashTimer > 0) {
+          f.mirrorObject.hitFlashTimer--;
+        }
+      }
+
+      if (f.sunExposedTimer && f.sunExposedTimer > 0) {
+        f.sunExposedTimer--;
+      }
+
+      if (f.sunActive) {
+        // 1. Environmental Temperature Gauge (0-100) gradual rise
+        f.sunTemperature = Math.min(SUN_MAX_TEMPERATURE, (f.sunTemperature || 0) + SUN_TEMPERATURE_RISE_RATE);
+        f.sunX = this.getArenaWidth() / 2;
+        f.sunY = 75;
+
+        // 2. Periodic Burn Damage to enemies (once every 60 frames / 1s)
+        if (this.frameCount % 60 === 0 && (f.sunTemperature || 0) > 15) {
+          const targets = this.getTargetsForAttacker(f, opponent);
+          const burnDmg = Math.max(1, Math.floor(((f.sunTemperature || 0) / 100) * 8));
+          for (const t of targets) {
+            if (t.hp > 0 && t.charId !== 'arabian_fat') {
+              if (t.charId === 'dipez' && t.dipezForm === 'pure_light') continue;
+              this.applyRawDamage(t, burnDmg, 0, 0, f);
+              t.burnedTimer = Math.max(t.burnedTimer || 0, 90);
+              this.addSpark(t.x + Math.random() * t.width, t.y + Math.random() * t.height, '#f97316');
+            }
+          }
+          if (Math.random() < 0.25) {
+            soundManager.playSunHeatwave();
+          }
+        }
+
+        // 3. Auto-Targeting Heat Lasers
+        // Interval accelerates if enemy is moving or dashing
+        const targets = this.getTargetsForAttacker(f, opponent);
+        const primaryTarget = targets[0] || opponent;
+        if (primaryTarget && primaryTarget.hp > 0) {
+          const isEnemyMoving = Math.abs(primaryTarget.vx) > 0.35 || Math.abs(primaryTarget.vy) > 0.35 || 
+            primaryTarget.action === 'walk' || primaryTarget.action === 'jump' ||
+            primaryTarget.action === 'punch' || primaryTarget.action === 'barrage' || (primaryTarget.action as string).includes('blitz');
+
+          const laserInterval = isEnemyMoving ? SUN_FAST_LASER_INTERVAL : SUN_BASE_LASER_INTERVAL;
+          
+          if (!f.sunLaserTimer || f.sunLaserTimer <= 0) {
+            f.sunLaserTimer = laserInterval;
+          } else {
+            f.sunLaserTimer--;
+          }
+
+          if (f.sunLaserTimer <= 0 && (f.sunTemperature || 0) > 10) {
+            f.sunLaserTimer = laserInterval;
+            const startX = (f.sunX || this.getArenaWidth() / 2) + (Math.random() * 40 - 20);
+            const startY = (f.sunY || 75) + 20;
+            const targetCenterX = primaryTarget.x + primaryTarget.width / 2;
+            const targetCenterY = primaryTarget.y + primaryTarget.height / 2;
+            const dx = targetCenterX - startX;
+            const dy = targetCenterY - startY;
+            const dist = Math.max(1, Math.hypot(dx, dy));
+            const vx = (dx / dist) * SUN_LASER_SPEED;
+            const vy = (dy / dist) * SUN_LASER_SPEED;
+
+            this.projectiles.push({
+              id: this.projectileId++,
+              ownerId: f.id,
+              type: 'sun_heat_laser',
+              x: startX,
+              y: startY,
+              vx,
+              vy,
+              baseVx: vx,
+              baseVy: vy,
+              width: 18,
+              height: 18,
+              damage: SUN_LASER_DAMAGE + Math.floor(((f.sunTemperature || 0) / 100) * 14),
+              knockbackX: vx > 0 ? 6 : -6,
+              knockbackY: -3,
+              hitStun: 22,
+              isFrozenInTime: false,
+              life: 80,
+              maxLife: 80,
+              color: '#f97316',
+            });
+
+            soundManager.playSunLaser();
+            this.addSpark(startX, startY, '#facc15');
+          }
+        }
+      }
+    }
+
+    // Michael Junister (Ghost: Hat Price) Mechanics & Kinetic Momentum Storage
+    if (f.charId === 'michael') {
+      if (f.michaelKineticMeter === undefined) f.michaelKineticMeter = 25;
+
+      // Decrement George Trample Cooldown
+      if (f.georgeTrampleCooldown && f.georgeTrampleCooldown > 0) {
+        f.georgeTrampleCooldown--;
+      }
+
+      // George horse mounting physics & gallop effects
+      if (f.isGeorgeMounted) {
+        if (f.isGrounded && Math.abs(f.vx) > 1.2) {
+          if (this.frameCount % 16 === 0) {
+            soundManager.playGeorgeGallop();
+          }
+          if (this.frameCount % 4 === 0) {
+            this.addSpark(
+              f.facing === 'right' ? f.x - 15 : f.x + f.width + 15,
+              f.y + f.height,
+              '#d97706'
+            );
+          }
+        }
+
+        // --- GEORGE TRAMPLE CHARGE COLLISION DAMAGE (HIGH SPEED GALLOP IMPACT) ---
+        if (Math.abs(f.vx) >= 3.2) {
+          const targets = this.getTargetsForAttacker(f, opponent);
+          for (const target of targets) {
+            if (target.hp > 0 && Math.abs((target.x + target.width / 2) - (f.x + f.width / 2)) < 70 && Math.abs(target.y - f.y) < 65) {
+              if (!target.georgeTrampleCooldown || target.georgeTrampleCooldown <= 0) {
+                target.georgeTrampleCooldown = 28; // Cooldown between trample hits
+                const trampleDamage = Math.round(30 + (f.michaelKineticMeter || 0) * 0.3);
+                const chargeDir = f.vx > 0 ? 1 : -1;
+                this.applyRawDamage(target, trampleDamage, chargeDir * 15, -4.5, f);
+                target.hitStun = 30;
+                this.screenShake = Math.max(this.screenShake, 7);
+                soundManager.playGeorgeNeigh();
+                soundManager.playGeorgeGallop();
+                this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#d97706');
+                this.addTextParticle(target.x + target.width / 2, target.y - 45, `🐎 HORSE TRAMPLE IMPACT! -${trampleDamage} HP`, '#facc15');
+                // Physical impact collision charges kinetic meter
+                f.michaelKineticMeter = Math.min(100, (f.michaelKineticMeter || 0) + 15);
+              }
+            }
+          }
+        }
+      }
+
+      // Dynamic Vault-Mounting Sequence for Michael Junister (No floating - athletic vaulting animation!)
+      if (f.georgeMountingTimer && f.georgeMountingTimer > 0) {
+        f.georgeMountingTimer--;
+
+        // George gallops smoothly and swiftly towards Michael
+        if (f.georgeX !== undefined) {
+          const targetX = f.x;
+          f.georgeX += (targetX - f.georgeX) * 0.22;
+          if (this.frameCount % 8 === 0) {
+            soundManager.playGeorgeGallop();
+          }
+        }
+
+        // Multi-stage mounting kinematics:
+        // 34-21: 'approach' (Michael waits grounded, readying sprint & extending hand for saddle pommel)
+        // 20-8: 'vault' (Michael springs into mid-air, vaulting right leg athletically over George's back)
+        // 7-0: 'mount' (Michael drops squarely into the saddle, slots boots into stirrups, grips reins)
+        if (f.georgeMountingTimer > 20) {
+          f.georgeMountingPhase = 'approach';
+        } else if (f.georgeMountingTimer > 7) {
+          f.georgeMountingPhase = 'vault';
+          if (this.frameCount % 4 === 0) {
+            this.addSpark(f.x + f.width / 2, f.y + f.height - 15, '#facc15');
+          }
+        } else {
+          f.georgeMountingPhase = 'mount';
+        }
+
+        // Vault completion: Michael is now firmly mounted!
+        if (f.georgeMountingTimer === 0) {
+          f.isGeorgeMounted = true;
+          f.georgeState = 'mounted';
+          f.georgeX = f.x;
+          soundManager.playGeorgeNeigh();
+          soundManager.playGeorgeGallop();
+          this.addShockwave(f.x + f.width / 2, f.y + f.height - 8, '#facc15');
+          this.addTextParticle(f.x + f.width / 2, f.y - 45, '🐎 MOUNTED GEORGE (NO.1 STALLION)!', '#facc15');
+          for (let i = 0; i < 12; i++) {
+            this.addSpark(
+              f.x + f.width / 2 + (Math.random() * 50 - 25),
+              f.y + f.height - 8 + (Math.random() * 16 - 8),
+              '#facc15'
+            );
+          }
+        }
+      } else if (f.isGeorgeMounted) {
+        f.georgeX = f.x;
+      }
+
+      // Re-mounting logic when Michael was unhorsed / fell off during combat:
+      if (f.georgePendingRemount) {
+        if (f.georgeFallOffTimer && f.georgeFallOffTimer > 0) {
+          f.georgeFallOffTimer--;
+        }
+        // Once Michael is back on his feet (not in hitstun, not in knockdown/knockback/wakeup, and fall off timer expired):
+        if (f.isGrounded && f.hitStun <= 0 && f.action !== 'knockdown' && f.action !== 'knockback' && f.action !== 'wakeup' && (f.georgeFallOffTimer || 0) <= 0) {
+          f.georgePendingRemount = false;
+          f.georgeMountingTimer = 30;
+          f.georgeMountingPhase = 'approach';
+          f.georgeState = 'mounting';
+          // George gallops in from nearby to let Michael remount!
+          f.georgeX = f.facing === 'right' ? f.x - 180 : f.x + 180;
+          soundManager.playGeorgeNeigh();
+          soundManager.playGeorgeGallop();
+          this.addTextParticle(f.x + f.width / 2, f.y - 45, '🐎 REMOUNTING GEORGE!', '#facc15');
+        }
+      }
+
+      // Hard ground landing impact absorption (falling / slammed down)
+      if (!f.wasGroundedLastFrame && f.isGrounded && Math.abs(f.vy) > 3) {
+        const groundImpact = Math.min(20, Math.round(Math.abs(f.vy) * 2));
+        f.michaelKineticMeter = Math.min(100, (f.michaelKineticMeter || 0) + groundImpact);
+        this.addTextParticle(f.x + f.width / 2, f.y - 35, `⚡ GROUND IMPACT ABSORPTION +${groundImpact}%`, '#facc15');
+      }
+
+      // Kinetic Energy Storage Logic: Meter only charges on physical impact absorption (taking hits / blocking / collisions)
+      // Slow natural dissipation when no impacts are sustained
+      if (f.michaelKineticMeter > 0 && (!f.michaelOverdriveTimer || f.michaelOverdriveTimer <= 0)) {
+        f.michaelKineticMeter = Math.max(0, f.michaelKineticMeter - 0.02);
+      }
+
+      if (f.michaelOverdriveTimer && f.michaelOverdriveTimer > 0) {
+        f.michaelOverdriveTimer--;
+        // Overdrive surge keeps kinetic meter burning at max capacity
+        f.michaelKineticMeter = 100;
+        if (this.frameCount % 5 === 0) {
+          const goldColor = Math.random() < 0.5 ? '#facc15' : '#fef08a';
+          this.addSpark(f.x + Math.random() * f.width, f.y + Math.random() * f.height, goldColor);
+        }
+      }
+
+      // Update Kinetic Stacks (0 to 5)
+      f.michaelKineticStacks = Math.min(5, Math.floor(f.michaelKineticMeter / 20));
+
+      if (f.michaelCounterTimer && f.michaelCounterTimer > 0) {
+        f.michaelCounterTimer--;
+        if (f.michaelCounterTimer <= 0) {
+          f.michaelCounterActive = false;
+          f.isParrying = false;
+        }
+      }
+    }
+
     // Parallel Self Army (Clones update - ALWAYS runs even if main Valentine is stunned, hit, or knocked down)
     if (!f.isClone && f.valentineClones && f.valentineClones.length > 0) {
       for (let i = f.valentineClones.length - 1; i >= 0; i--) {
@@ -1107,7 +1459,7 @@ export class GameEngine {
         } else {
           const cloneTargets = this.getTargetsForAttacker(clone, opponent);
           const cloneTarget = cloneTargets[0] || opponent;
-          const cloneInput = this.getAIControllerForFighter(clone.id).update(clone, cloneTarget, this.matchConfig, this.activeGravityAxis);
+          const cloneInput = this.getAIControllerForFighter(clone.id).update(clone, cloneTarget, this.matchConfig, this.activeGravityAxis, this.getArenaWidth());
           this.updateFighter(clone, cloneInput, cloneTarget);
         }
       }
@@ -1132,7 +1484,8 @@ export class GameEngine {
               f.parallelEnemyClone,
               [f],
               this.matchConfig,
-              this.activeGravityAxis
+              this.activeGravityAxis,
+              this.getArenaWidth()
             );
             this.updateFighter(f.parallelEnemyClone, cloneInput, f);
           }
@@ -1213,6 +1566,20 @@ export class GameEngine {
       }
     }
 
+    // Michael Junister Golden Kinetic Trails (Only for lunges: palm thrust, counter kick, and ultimate - NO afterimages on Overdrive!)
+    if (f.charId === 'michael' && (f.action === 'michael_palm_thrust' || f.action === 'michael_counter_kick' || f.action === 'michael_ultimate')) {
+      if (this.frameCount % 2 === 0) {
+        f.afterimages.push({
+          x: f.x,
+          y: f.y,
+          alpha: 0.8,
+          facing: f.facing,
+          charId: 'michael',
+          color: 'rgba(250, 204, 21, 0.7)'
+        });
+      }
+    }
+
     // --- MANGA MENACING SFX GENERATOR (WALKING, FOOTSTEPS, LANDING, STAND AURA) ---
     // 1. Ground Landing Impact SFX (When touching down on floor)
     if (!f.wasGroundedLastFrame && f.isGrounded && Math.abs(f.vy) > 1.2) {
@@ -1225,7 +1592,16 @@ export class GameEngine {
 
     // 2. Walking / Footstep Menacing Particles (When stepping/walking across the ground)
     if (f.isGrounded && (f.action === 'walk' || Math.abs(f.vx) > 0.4)) {
-      if (this.frameCount % 7 === (f.id === 'player' ? 0 : 3)) {
+      if (f.charId === 'michael' && f.isGeorgeMounted) {
+        const isFast = Math.abs(f.vx) > 2.2;
+        const hoofInterval = isFast ? 10 : 18;
+        if (this.frameCount % hoofInterval === 0) {
+          soundManager.playGeorgeGallop();
+          const dustX = f.facing === 'right' ? f.x - 18 : f.x + f.width + 8;
+          this.addSpark(dustX + (Math.random() * 10 - 5), f.y + f.height - 6, '#cbd5e1');
+          this.addMenacingParticle(f.x + f.width / 2, f.y + f.height - 12, isFast ? 'ドドド' : 'パッカ', '#facc15');
+        }
+      } else if (this.frameCount % 7 === (f.id === 'player' ? 0 : 3)) {
         const footX = f.x + f.width / 2 + (Math.random() * 26 - 13);
         const footY = f.y + f.height - 10;
         const footGlyphs = ['ゴ', 'ド', 'ズズ', 'ドド'];
@@ -1314,6 +1690,37 @@ export class GameEngine {
         this.addMenacingParticle(f.x + Math.random() * f.width, f.y + Math.random() * f.height, '🩸', '#dc2626');
       }
     }
+
+    // PUCCI WHITESNAKE ACID MELT & DISSOLUTION STATUS
+    if (f.acidMeltTimer && f.acidMeltTimer > 0) {
+      f.acidMeltTimer--;
+      f.vx *= 0.82; // Sluggish movement in melting corrosive acid
+      if (this.frameCount % 16 === 0) {
+        this.applyRawDamage(f, PUCCI_ACID_DAMAGE_PER_TICK, 0, 0);
+        this.addSpark(f.x + Math.random() * f.width, f.y + Math.random() * f.height, '#c084fc');
+        this.particles.push({
+          id: this.projectileId++,
+          x: f.x + Math.random() * f.width,
+          y: f.y + Math.random() * f.height,
+          vx: (Math.random() - 0.5) * 2,
+          vy: -Math.random() * 2.5,
+          life: 25,
+          maxLife: 25,
+          size: 6,
+          color: '#c084fc',
+          type: 'acid_bubble',
+        });
+      }
+    }
+
+    // PUCCI C-MOON INVERSION DISTORTION STATUS
+    if (f.inversionDistortTimer && f.inversionDistortTimer > 0) {
+      f.inversionDistortTimer--;
+      if (this.frameCount % 8 === 0) {
+        this.addSpark(f.x + f.width / 2, f.y + f.height / 2, '#34d399');
+      }
+    }
+
     if (f.headDoctorTimer && f.headDoctorTimer > 0) {
       f.headDoctorTimer--;
       f.invulnerableTimer = Math.max(f.invulnerableTimer, 2); // Maintain invulnerability
@@ -1344,17 +1751,17 @@ export class GameEngine {
 
       // ULTIMATE MASSIVE HIGHWAY TRAFFIC CARNAGE:
       // Fast-paced bumper-to-bumper convoys (🚗 🚙 🛻 🚐 🚚 🚛) rushing from outside map walls!
-      if (f.calamityRainTimer > 25 && f.calamityRainTimer % 20 === 0) {
-        const waveIndex = Math.floor((TOORU_ULTIMATE_DURATION - f.calamityRainTimer) / 20);
+      if (f.calamityRainTimer > 25 && f.calamityRainTimer % 15 === 0) {
+        const waveIndex = Math.floor((TOORU_ULTIMATE_DURATION - f.calamityRainTimer) / 15);
         const vehicleTypes: Array<'sedan' | 'suv' | 'pickup' | 'van' | 'truck' | 'semi'> = [
-          'sedan', 'suv', 'pickup', 'van', 'truck', 'semi', 'sedan', 'pickup'
+          'sedan', 'suv', 'pickup', 'van', 'truck', 'semi', 'sedan', 'pickup', 'truck', 'semi'
         ];
         // Spawn a fast sequence of vehicles from both left & right walls simultaneously!
-        for (let c = 0; c < 6; c++) {
+        for (let c = 0; c < 8; c++) {
           const type = vehicleTypes[(waveIndex * 2 + c) % vehicleTypes.length];
           const dir: 1 | -1 = c % 2 === 0 ? 1 : -1;
           const sideIndex = Math.floor(c / 2);
-          const offset = sideIndex * 200;
+          const offset = sideIndex * 180;
           this.spawnRunawayCar(f, opponent, dir, type, offset);
         }
       } else if (f.calamityRainTimer === 20) {
@@ -1410,7 +1817,11 @@ export class GameEngine {
         wou.vx = 0;
       }
 
-      wou.x += wou.vx;
+      if (this.timeStopState.isActive) {
+        wou.vx = 0;
+      } else {
+        wou.x += wou.vx;
+      }
       wou.y = f.y;
 
       // Wonder of U Autonomous Proximity Retaliation:
@@ -1480,6 +1891,19 @@ export class GameEngine {
           this.triggerCalamity(f, opponent);
           const cd = f.isHeadDoctorDisguise ? 20 : 32;
           f.calamityCooldownTimer = cd;
+        }
+      }
+
+      // Wonder of U / Tooru: Calamity Highway Traffic Convoy (10 Cars every 15 seconds)
+      if (!this.timeStopState.isActive && f.hp > 0) {
+        if (f.calamityCarConvoyTimer === undefined) {
+          f.calamityCarConvoyTimer = 900; // 15 seconds at 60 FPS
+        } else if (f.calamityCarConvoyTimer > 0) {
+          f.calamityCarConvoyTimer--;
+          if (f.calamityCarConvoyTimer === 0) {
+            this.spawnCalamityCarConvoy(f, opponent, 10);
+            f.calamityCarConvoyTimer = 900; // Reset every 15s
+          }
         }
       }
     }
@@ -1878,6 +2302,30 @@ export class GameEngine {
       }
     }
 
+    // Wally Wable / Perstein timers
+    if (f.charId === 'perstein') {
+      if (f.persteinDeflectionTimer && f.persteinDeflectionTimer > 0) {
+        f.persteinDeflectionTimer--;
+      }
+      if (f.persteinDeflectReactionTimer && f.persteinDeflectReactionTimer > 0) {
+        f.persteinDeflectReactionTimer--;
+      }
+    }
+
+    if (f.persteinChainBindTimer && f.persteinChainBindTimer > 0) {
+      f.persteinChainBindTimer--;
+    }
+
+    // Universal Perstein Flesh Shred / Bleed status effect on affected fighters
+    if (f.persteinShredTimer && f.persteinShredTimer > 0) {
+      f.persteinShredTimer--;
+      if (this.frameCount % 20 === 0) {
+        f.hp = Math.max(1, f.hp - 3);
+        this.addSpark(f.x + f.width / 2, f.y + f.height / 2, '#ef4444');
+        this.addTextParticle(f.x + f.width / 2, f.y - 30, '🩸 FLESH TEAR BLEED (-3 HP)', '#ef4444');
+      }
+    }
+
     // TRIGGER ACTIONS BASED ON CHARACTER SKILLS
     const isJotaro = f.charId === 'jotaro';
     const isDio = f.charId === 'dio';
@@ -1906,9 +2354,41 @@ export class GameEngine {
       }
     }
 
-    // 1. Stand Toggle / Equip Sword Stance Toggle
-    if (input.toggleStand && f.cooldowns.standToggle <= 0) {
-      if (isJonathan) {
+    // 1. Stand Toggle / Equip Sword Stance Toggle / Mount George Toggle
+    if (input.toggleStand && f.cooldowns.standToggle <= 0 && (f.hasStand || isJonathan || f.charId === 'michael')) {
+      if (f.charId === 'michael') {
+        if (f.isGeorgeMounted) {
+          // Voluntary dismount onto foot
+          f.isGeorgeMounted = false;
+          f.georgeMountingTimer = 0;
+          f.georgePendingRemount = false;
+          f.cooldowns.standToggle = 30;
+          f.vy = -4.2;
+          f.vx = f.facing === 'right' ? 2.5 : -2.5;
+          soundManager.playGeorgeGallop();
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '🐎 DISMOUNT (ON FOOT)', '#94a3b8');
+        } else if ((f.georgeMountingTimer || 0) <= 0) {
+          // Dynamic Vault-Mount Sequence: Stay on foot initially while George gallops in!
+          f.isGeorgeMounted = false;
+          f.georgeMountingTimer = 34; // 34-frame athletic approach & vault-mount sequence
+          f.georgeMountingPhase = 'approach';
+          f.georgeState = 'mounting';
+          f.georgeX = f.facing === 'right' ? f.x - 260 : f.x + 260;
+          f.georgeY = f.y;
+          f.cooldowns.standToggle = 38;
+          soundManager.playGeorgeNeigh();
+          soundManager.playGeorgeGallop();
+          this.addTextParticle(f.x + f.width / 2, f.y - 45, '🐎 CALLING GEORGE THE THOROUGHBRED!', '#facc15');
+          this.addShockwave(f.x + f.width / 2, f.y + f.height - 10, '#facc15');
+          for (let i = 0; i < 12; i++) {
+            this.addSpark(
+              f.x + f.width / 2 + (Math.random() * 60 - 30),
+              f.y + f.height - 10 + (Math.random() * 20 - 10),
+              '#facc15'
+            );
+          }
+        }
+      } else if (isJonathan) {
         f.isSwordEquipped = !f.isSwordEquipped;
         f.isStandActive = f.isSwordEquipped; // Active Hamon aura glow
         f.cooldowns.standToggle = 25;
@@ -2833,6 +3313,49 @@ export class GameEngine {
       }
     }
 
+    // ARABIAN FAT & THE SUN (STAND OF THE SUN & MIRROR CAMOUFLAGE)
+    if (f.charId === 'arabian_fat') {
+      if (this.handleArabianFatSkills(f, input, opponent)) {
+        this.applyPhysics(f);
+        return;
+      }
+      // While hiding behind mirror, Arabian Fat cannot move or execute standard punch/barrage, but CAN pose to charge energy or cast skills!
+      if (f.isHidingBehindMirror) {
+        if (input.pose && f.isGrounded && f.cooldowns.pose <= 0) {
+          f.action = 'pose';
+          f.actionTimer = POSE_DURATION;
+          f.actionDuration = POSE_DURATION;
+          f.cooldowns.pose = 45;
+          f.vx = 0;
+          soundManager.playPoseSound(f.charId);
+          this.addTextParticle(f.x + f.width / 2, f.y - 45, '☕ 太陽は沈まない！ (ENERGY CHARGE)', '#f59e0b');
+          this.applyPhysics(f);
+          return;
+        }
+        if (input.punch || input.barrage) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '🪞 IN CAMOUFLAGE (USE SKILLS OR POSE: B)!', '#f59e0b');
+        }
+        this.applyPhysics(f);
+        return;
+      }
+    }
+
+    // MICHAEL JUNISTER (GHOST: HAT PRICE)
+    if (f.charId === 'michael') {
+      if (this.handleMichaelSkills(f, input, opponent)) {
+        this.applyPhysics(f);
+        return;
+      }
+    }
+
+    // WALLY WABLE / PERSTEIN (GHOST: WABLE THE METAL CUTTER)
+    if (f.charId === 'perstein') {
+      if (this.handlePersteinSkills(f, input, opponent)) {
+        this.applyPhysics(f);
+        return;
+      }
+    }
+
     // 4. Barrage Attack (Universal)
     if (input.barrage && f.cooldowns.barrage <= 0 && (f.energy >= BARRAGE_COST || this.matchConfig.mode === 'training')) {
       f.action = 'barrage';
@@ -2914,6 +3437,10 @@ export class GameEngine {
         this.addTextParticle(f.x + f.width / 2, f.y - 45, 'GLOWING MAN... PHOTON SHIFT!', '#fef08a');
         this.addMenacingParticle(f.x + 25 * dir, f.y - 20, '✨', '#ffffff');
         this.addShockwave(f.x + f.width / 2, f.y + f.height - 10, '#fef08a');
+      } else if (f.charId === 'perstein') {
+        this.addTextParticle(f.x + f.width / 2, f.y - 45, 'WABLE THE METAL CUTTER... TEBAS TANPA AMPUN!', '#38bdf8');
+        this.addMenacingParticle(f.x + 25 * dir, f.y - 20, '⚙️', '#94a3b8');
+        this.addShockwave(f.x + f.width / 2, f.y + f.height - 10, '#38bdf8');
       } else {
         this.addTextParticle(f.x + f.width / 2, f.y - 30, '★ JOJO POSE ★', '#c084fc');
         this.addMenacingParticle(f.x, f.y - 15, 'ゴ', '#c084fc');
@@ -2931,13 +3458,28 @@ export class GameEngine {
     if (f.charId === 'pucci' && f.pucciForm === 'made_in_heaven') {
       speedMult *= (1.0 + (f.mihSpeedStack || 0));
     }
+    if (f.charId === 'michael' && f.isGeorgeMounted) {
+      speedMult *= 1.38; // Thoroughbred equestrian mobility and speed!
+    }
     const op = (f.id === 'player' || f.id === 'teammate') ? this.ai : this.player;
     if (op && op.charId === 'king_crimson' && op.isTimeEraseActive) {
       speedMult *= 0.28;
     }
 
+    // Environmental Heat Slowdown from The Sun Stand
+    const sunUser = this.getAllActiveFighters().find(af => af && af.hp > 0 && af.charId === 'arabian_fat' && af.sunActive && (af.sunTemperature || 0) > 0 && af.team !== f.team);
+    if (sunUser && sunUser.sunTemperature) {
+      const heatSlow = Math.max(0.45, 1.0 - ((sunUser.sunTemperature || 0) / 100) * 0.55);
+      speedMult *= heatSlow;
+    }
+
+    let heatJump = 1.0;
+    if (sunUser && sunUser.sunTemperature) {
+      heatJump = Math.max(0.48, 1.0 - ((sunUser.sunTemperature || 0) / 100) * 0.50);
+    }
+
     const axis = this.activeGravityAxis || 'down';
-    const jumpMag = Math.abs(JUMP_FORCE);
+    const jumpMag = Math.abs(JUMP_FORCE) * heatJump;
 
     if (axis === 'right') {
       // Standing on Right Wall (Ground at +X, facing -X towards center)
@@ -3059,6 +3601,12 @@ export class GameEngine {
         break;
 
       case 'barrage':
+        if (f.charId === 'michael' && f.isGeorgeMounted && opponent && opponent.hp > 0) {
+          const dist = Math.abs((opponent.x + opponent.width / 2) - (f.x + f.width / 2));
+          if (dist < 90) {
+            f.vx *= 0.1; // Lock George in front of target during barrage
+          }
+        }
         if (f.actionTimer % 3 === 0) {
           this.executeBarrageHit(f, opponent);
         }
@@ -3078,6 +3626,62 @@ export class GameEngine {
             : 'rgba(192, 132, 252, 0.9)';
           this.addMenacingParticle(f.x + f.width / 2 + offsetX, f.y - 10, glyph, glyphColor);
         }
+        break;
+
+      case 'sun_exposed_panic':
+        f.vx *= 0.85;
+        if (this.frameCount % 8 === 0) {
+          this.addMenacingParticle(f.x + (Math.random() * 40 - 20), f.y - 20, '💧', '#38bdf8');
+        }
+        break;
+
+      // MICHAEL JUNISTER ACTIONS (GHOST: HAT PRICE)
+      case 'michael_palm_thrust':
+        if (f.isGeorgeMounted && opponent && opponent.hp > 0) {
+          const dist = Math.abs((opponent.x + opponent.width / 2) - (f.x + f.width / 2));
+          if (dist < 95) {
+            f.vx *= 0.2; // Lock position for palm thrust impact
+          }
+        }
+        if (f.actionTimer === 12) {
+          this.executeMichaelPalmThrust(f, opponent);
+        }
+        break;
+
+      case 'michael_counter_stance':
+        f.vx *= 0.8;
+        if (f.actionTimer <= 0) {
+          f.michaelCounterActive = false;
+          f.isParrying = false;
+        }
+        break;
+
+      case 'michael_counter_kick':
+        if (f.actionTimer === 14) {
+          this.executeMichaelCounterKickHit(f, opponent);
+        }
+        break;
+
+      case 'michael_axe_kick':
+        this.executeMichaelAxeKickFrame(f, opponent);
+        break;
+
+      case 'michael_kinetic_barrage':
+        if (opponent && opponent.hp > 0) {
+          const dist = Math.abs((opponent.x + opponent.width / 2) - (f.x + f.width / 2));
+          if (dist < 95) {
+            f.vx *= 0.12; // Lock George in front of target during kinetic barrage
+          }
+        }
+        if (f.actionTimer % 5 === 0 && f.actionTimer > 10) {
+          this.executeMichaelBarrageHit(f, opponent);
+        } else if (f.actionTimer === 8) {
+          this.executeMichaelBarrageFinisher(f, opponent);
+        }
+        break;
+
+      case 'michael_ultimate':
+        this.executeMichaelUltimateFrame(f, opponent);
         break;
 
       case 'star_finger':
@@ -3463,6 +4067,46 @@ export class GameEngine {
         if (f.actionTimer === 45) {
           this.executeGappyGoBeyond(f, opponent);
         }
+        break;
+
+      // WALLY WABLE / PERSTEIN (WABLE THE METAL CUTTER)
+      case 'perstein_chain_whip':
+        if (f.actionTimer === 12) {
+          this.executePersteinChainWhip(f, opponent);
+        }
+        break;
+
+      case 'perstein_chain_bind_shred':
+        if (f.actionTimer % 4 === 0 && f.actionTimer > 6) {
+          this.executePersteinShredHit(f, opponent);
+        } else if (f.actionTimer === 4) {
+          this.executePersteinShredFinisher(f, opponent);
+        }
+        break;
+
+      case 'perstein_spark_ignition':
+        if (f.actionTimer === 10) {
+          this.executePersteinSparkIgnition(f, opponent);
+        }
+        break;
+
+      case 'perstein_awaken_deflection':
+        if (f.actionTimer === 12) {
+          f.persteinDeflectionTimer = PERSTEIN_DEFLECTION_DURATION;
+          soundManager.playPersteinDeflection();
+          this.addShockwave(f.x + f.width / 2, f.y + f.height / 2, '#38bdf8');
+          this.addTextParticle(f.x + f.width / 2, f.y - 45, '⚙️ INVISIBLE DRIVE CHAIN WARD (4s)', '#38bdf8');
+        }
+        break;
+
+      case 'perstein_awaken_touch':
+        if (f.actionTimer === 14) {
+          this.executePersteinAwakenTouch(f, opponent);
+        }
+        break;
+
+      case 'perstein_ultimate':
+        this.executePersteinUltimateFrame(f, opponent);
         break;
     }
   }
@@ -4635,6 +5279,512 @@ export class GameEngine {
     return false;
   }
 
+  // --- ARABIAN FAT & THE SUN SKILLS LOGIC ---
+  private handleArabianFatSkills(f: Fighter, input: InputState, opponent: Fighter): boolean {
+    const isTraining = this.matchConfig.mode === 'training';
+
+    // Skill 1: Focused Heat Ray Snipe (U)
+    if (input.skill1 && f.cooldowns.skill1 <= 0) {
+      if (f.energy >= 15 || isTraining) {
+        f.action = 'sun_laser_strike';
+        f.actionTimer = 22;
+        f.actionDuration = 22;
+        f.cooldowns.skill1 = 45;
+        if (!isTraining) f.energy -= 15;
+
+        soundManager.playSunLaser();
+        const startX = f.sunX || this.getArenaWidth() / 2;
+        const startY = (f.sunY || 75) + 25;
+        const targetCenterX = opponent.x + opponent.width / 2;
+        const targetCenterY = opponent.y + opponent.height / 2;
+        const dx = targetCenterX - startX;
+        const dy = targetCenterY - startY;
+        const dist = Math.max(1, Math.hypot(dx, dy));
+        const laserSpeed = SUN_LASER_SPEED * 1.35;
+        const vx = (dx / dist) * laserSpeed;
+        const vy = (dy / dist) * laserSpeed;
+
+        this.projectiles.push({
+          id: this.projectileId++,
+          ownerId: f.id,
+          type: 'sun_heat_laser',
+          x: startX,
+          y: startY,
+          vx,
+          vy,
+          baseVx: vx,
+          baseVy: vy,
+          width: 22,
+          height: 22,
+          damage: 42,
+          knockbackX: (opponent.x > startX ? 1 : -1) * 12,
+          knockbackY: -5,
+          hitStun: 35,
+          isFrozenInTime: false,
+          life: 60,
+          maxLife: 60,
+          color: '#ef4444',
+        });
+
+        this.screenShake = 6;
+        this.addTextParticle(startX, startY + 20, '🔥 FOCUSED HEAT RAY SNIPE!', '#f97316');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '⚡ NEED 15 ENERGY (POSE: B)!', '#f59e0b');
+        }
+      }
+    }
+
+    // Skill 2: Desert Mirage Illusion (I)
+    if (input.skill2 && f.cooldowns.skill2 <= 0) {
+      if (f.energy >= SUN_MIRAGE_TRAP_COST || isTraining) {
+        f.action = 'sun_mirage_trap';
+        f.actionTimer = 25;
+        f.actionDuration = 25;
+        f.cooldowns.skill2 = SUN_MIRAGE_TRAP_COOLDOWN;
+        if (!isTraining) f.energy -= SUN_MIRAGE_TRAP_COST;
+
+        soundManager.playSunHeatwave();
+        opponent.blindedTimer = SUN_MIRAGE_DURATION;
+        opponent.hitStun = 20;
+
+        this.addShockwave(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, '#f97316');
+        this.addTextParticle(opponent.x + opponent.width / 2, opponent.y - 45, '🏜️ DESERT HEAT MIRAGE: SENSES INVERTED (3s)!', '#f97316');
+        for (let s = 0; s < 12; s++) {
+          this.addSpark(opponent.x + Math.random() * opponent.width, opponent.y + Math.random() * opponent.height, '#fb923c');
+        }
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '⚡ NEED 25 ENERGY (POSE: B)!', '#f59e0b');
+        }
+      }
+    }
+
+    // Skill 3: Prominence Solar Bombardment (O)
+    if (input.skill3 && f.cooldowns.skill3 <= 0) {
+      if (f.energy >= SUN_BOMBARDMENT_COST || isTraining) {
+        f.action = 'sun_bombardment';
+        f.actionTimer = 35;
+        f.actionDuration = 35;
+        f.cooldowns.skill3 = SUN_BOMBARDMENT_COOLDOWN;
+        if (!isTraining) f.energy -= SUN_BOMBARDMENT_COST;
+
+        soundManager.playSunLaser();
+        const sunCenterX = f.sunX || this.getArenaWidth() / 2;
+        const sunCenterY = (f.sunY || 75) + 30;
+
+        const angles = [-0.65, -0.32, 0, 0.32, 0.65];
+        for (const angle of angles) {
+          const speed = 16;
+          const vx = Math.sin(angle) * speed;
+          const vy = Math.cos(angle) * speed;
+
+          this.projectiles.push({
+            id: this.projectileId++,
+            ownerId: f.id,
+            type: 'sun_flare_bomb',
+            x: sunCenterX + (Math.random() * 30 - 15),
+            y: sunCenterY,
+            vx,
+            vy,
+            baseVx: vx,
+            baseVy: vy,
+            width: 24,
+            height: 24,
+            damage: SUN_BOMBARDMENT_DAMAGE,
+            knockbackX: vx > 0 ? 8 : -8,
+            knockbackY: -6,
+            hitStun: 28,
+            isFrozenInTime: false,
+            life: 80,
+            maxLife: 80,
+            color: '#ef4444',
+          });
+        }
+
+        this.screenShake = 9;
+        this.addTextParticle(sunCenterX, sunCenterY + 20, '☄️ SOLAR PROMINENCE BOMBARDMENT (5 BOMBS)!', '#ef4444');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '⚡ NEED 40 ENERGY (POSE: B)!', '#f59e0b');
+        }
+      }
+    }
+
+    // Skill 4 / Ultimate: Supernova Heatwave (Y / P)
+    if (input.ultimate && f.cooldowns.ultimate <= 0) {
+      if (f.energy >= SUN_SUPERNOVA_COST || isTraining || f.isHidingBehindMirror) {
+        f.action = 'sun_supernova';
+        f.actionTimer = 45;
+        f.actionDuration = 45;
+        f.cooldowns.ultimate = SUN_SUPERNOVA_COOLDOWN;
+        if (!isTraining) f.energy = Math.max(0, f.energy - SUN_SUPERNOVA_COST);
+
+        // Immediate +35°C Environmental heat jump!
+        f.sunTemperature = Math.min(SUN_MAX_TEMPERATURE, (f.sunTemperature || 0) + 35);
+
+        soundManager.playSunHeatwave();
+        soundManager.playArabiaFatChuckle();
+        this.screenShake = 22;
+
+        const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+        for (const t of targets) {
+          if (t.charId === 'dipez' && t.dipezForm === 'pure_light') continue;
+          this.applyRawDamage(t, SUN_SUPERNOVA_DAMAGE, (t.x > f.x ? 1 : -1) * 16, -10, f);
+          t.burnedTimer = 300; // 5 seconds burn
+          t.hitStun = 50;
+          this.addShockwave(t.x + t.width / 2, t.y + t.height / 2, '#f97316');
+        }
+
+        this.addTextParticle(f.x + f.width / 2, f.y - 50, '☀️💥 SUPERNOVA HEATWAVE (+35°C GLOBAL BURST)!', '#ea580c');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, '⚡ NEED 75 ENERGY (POSE: B)!', '#f59e0b');
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // --- MICHAEL JUNISTER (GHOST: HAT PRICE) SKILLS LOGIC ---
+  private handleMichaelSkills(f: Fighter, input: InputState, opponent: Fighter): boolean {
+    const isTraining = this.matchConfig.mode === 'training';
+    const isOverdrive = (f.michaelOverdriveTimer || 0) > 0;
+    const isMounted = !!f.isGeorgeMounted;
+    const forwardDir = f.facing === 'right' ? 1 : -1;
+
+    // Skill 1: Golden Palm Thrust (U) / Mounted George Charge Thrust
+    if (input.skill1 && f.cooldowns.skill1 <= 0) {
+      if (f.energy >= MICHAEL_PALM_THRUST_COST || isTraining) {
+        f.action = 'michael_palm_thrust';
+        f.actionTimer = 22;
+        f.actionDuration = 22;
+        f.cooldowns.skill1 = MICHAEL_PALM_THRUST_COOLDOWN;
+        if (!isTraining) f.energy -= MICHAEL_PALM_THRUST_COST;
+        f.vx = forwardDir * (MICHAEL_PALM_THRUST_DASH_SPEED * (isMounted ? 1.5 : (isOverdrive ? 1.3 : 1.0)));
+        soundManager.playMichaelPalmThrust();
+        if (isMounted) soundManager.playGeorgeGallop();
+        const skillName = isMounted ? '🐎 GEORGE CHARGE: KINETIC PALM THRUST!' : '⚡ GOLDEN PALM THRUST!';
+        this.addTextParticle(f.x + f.width / 2, f.y - 35, skillName, '#facc15');
+        this.addShockwave(f.x + f.width / 2, f.y + f.height / 2, '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_PALM_THRUST_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    // Skill 2: Flash Step Counter (I) / George Rearing Counter Stance
+    if (input.skill2 && f.cooldowns.skill2 <= 0) {
+      if (f.energy >= MICHAEL_COUNTER_COST || isTraining) {
+        f.action = 'michael_counter_stance';
+        f.actionTimer = MICHAEL_COUNTER_DURATION;
+        f.actionDuration = MICHAEL_COUNTER_DURATION;
+        f.cooldowns.skill2 = MICHAEL_COUNTER_COOLDOWN;
+        f.michaelCounterActive = true;
+        f.michaelCounterTimer = MICHAEL_COUNTER_DURATION;
+        f.isParrying = true;
+        if (!isTraining) f.energy -= MICHAEL_COUNTER_COST;
+        f.vx = 0;
+        soundManager.playMichaelCounter();
+        if (isMounted) soundManager.playGeorgeNeigh();
+        const skillName = isMounted ? '🐎 GEORGE REARING COUNTER STANCE!' : '🥋 KINETIC COUNTER STANCE';
+        this.addTextParticle(f.x + f.width / 2, f.y - 35, skillName, '#facc15');
+        this.addShockwave(f.x + f.width / 2, f.y + f.height - 10, '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_COUNTER_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    // Skill 3: Golden Axe Kick (O) / Equestrian High Jump & Trample Slam
+    if (input.skill3 && f.cooldowns.skill3 <= 0) {
+      if (f.energy >= MICHAEL_AXE_KICK_COST || isTraining) {
+        f.action = 'michael_axe_kick';
+        f.actionTimer = 34;
+        f.actionDuration = 34;
+        f.cooldowns.skill3 = MICHAEL_AXE_KICK_COOLDOWN;
+        f.michaelAxeKickPhase = 'rise';
+        if (!isTraining) f.energy -= MICHAEL_AXE_KICK_COST;
+        f.vy = isMounted ? -15 : -12;
+        f.vx = forwardDir * (isMounted ? 7.5 : 5.5);
+        f.isGrounded = false;
+        soundManager.playMichaelAxeKick();
+        if (isMounted) soundManager.playGeorgeNeigh();
+        const skillName = isMounted ? '🐎 EQUESTRIAN HIGH LEAP & TRAMPLE!' : '⚡ GOLDEN AXE KICK!';
+        this.addTextParticle(f.x + f.width / 2, f.y - 35, skillName, '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_AXE_KICK_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    // Skill 4: Hat Price Overdrive (P) / Golden Pegasus Overdrive
+    if (input.skill4 && f.cooldowns.skill4 <= 0) {
+      if (f.energy >= MICHAEL_OVERDRIVE_COST || isTraining) {
+        f.action = 'michael_overdrive';
+        f.actionTimer = 25;
+        f.actionDuration = 25;
+        f.cooldowns.skill4 = MICHAEL_OVERDRIVE_COOLDOWN;
+        f.michaelOverdriveTimer = MICHAEL_OVERDRIVE_DURATION;
+        f.isStandActive = true;
+        if (!isTraining) f.energy -= MICHAEL_OVERDRIVE_COST;
+        soundManager.playMichaelGoldAura();
+        if (isMounted) soundManager.playGeorgeNeigh();
+        this.addShockwave(f.x + f.width / 2, f.y + f.height / 2, '#facc15');
+        const skillName = isMounted ? '🔥 HAT PRICE OVERDRIVE (MOUNTED)!' : '🔥 HAT PRICE OVERDRIVE! (GOLDEN LIMBS)';
+        this.addTextParticle(f.x + f.width / 2, f.y - 45, skillName, '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_OVERDRIVE_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    // Skill 5: Kinetic Barrage: Gold Gale (L) / George Hypersonic Trample Rush
+    if (input.skill5 && f.cooldowns.skill5 <= 0) {
+      if (f.energy >= MICHAEL_BARRAGE_COST || isTraining) {
+        f.action = 'michael_kinetic_barrage';
+        f.actionTimer = 54;
+        f.actionDuration = 54;
+        f.cooldowns.skill5 = MICHAEL_BARRAGE_COOLDOWN;
+        if (!isTraining) f.energy -= MICHAEL_BARRAGE_COST;
+        f.vx = forwardDir * (isMounted ? 6.5 : 3.5);
+        soundManager.playBarrageHit();
+        if (isMounted) soundManager.playGeorgeGallop();
+        const skillName = isMounted ? '🐎 GEORGE HYPERSONIC TRAMPLE RUSH!' : '⚡ KINETIC RUSH: GOLD GALE!';
+        this.addTextParticle(f.x + f.width / 2, f.y - 40, skillName, '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_BARRAGE_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    // Ultimate: HAT PRICE: MAXIMUM PRICE (Y) / DEVIL'S RUN GRAND GALLOP
+    if (input.ultimate && f.cooldowns.ultimate <= 0) {
+      if (f.energy >= MICHAEL_ULTIMATE_COST || isTraining) {
+        f.action = 'michael_ultimate';
+        f.actionTimer = 75;
+        f.actionDuration = 75;
+        f.cooldowns.ultimate = MICHAEL_ULTIMATE_COOLDOWN;
+        f.michaelUltimateHitsRemaining = 7;
+        f.invulnerableTimer = 85;
+        f.isStandActive = true;
+        f.isGeorgeMounted = true; // Auto-mount George for the grand ultimate!
+        f.georgeX = f.x;
+        f.georgePendingRemount = false;
+        f.georgeMountingTimer = 0;
+        f.georgeFallOffTimer = 0;
+        f.georgeState = 'mounted';
+        if (!isTraining) f.energy -= MICHAEL_ULTIMATE_COST;
+        soundManager.playMichaelUltimate();
+        soundManager.playGeorgeNeigh();
+        this.screenShake = 12;
+        this.addShockwave(f.x + f.width / 2, f.y + f.height / 2, '#facc15');
+        this.addTextParticle(f.x + f.width / 2, f.y - 50, '👑 GEORGE DEVIL\'S RUN: MAXIMUM PRICE GALLOP!!', '#facc15');
+        return true;
+      } else {
+        if (this.frameCount % 20 === 0) {
+          this.addTextParticle(f.x + f.width / 2, f.y - 40, `⚡ NEED ${MICHAEL_ULTIMATE_COST} ENERGY (POSE: B)!`, '#facc15');
+        }
+      }
+    }
+
+    return false;
+  }
+
+  private executeMichaelPalmThrust(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const isOverdrive = (f.michaelOverdriveTimer || 0) > 0;
+    const reach = isOverdrive ? 110 : 80;
+    const hitX = f.x + f.width / 2 + dir * (f.width / 2 + reach / 2);
+    const hitY = f.y + f.height / 2;
+
+    this.screenShake = Math.max(this.screenShake, 7);
+    this.addShockwave(hitX, hitY, '#facc15');
+    soundManager.playMichaelPalmThrust();
+
+    const targets = this.getTargetsForAttacker(f, opponent);
+    for (const t of targets) {
+      if (t.hp > 0 && Math.abs((t.x + t.width / 2) - hitX) < (reach + t.width / 2) && Math.abs(t.y - f.y) < 70) {
+        t.guardBreakTimer = 50; // Guard Break
+        const damage = MICHAEL_PALM_THRUST_DAMAGE * (isOverdrive ? 1.25 : 1.0);
+        this.applyRawDamage(t, damage, dir * 18, -5, f);
+        t.hitStun = 35;
+        this.addTextParticle(t.x + t.width / 2, t.y - 40, '⚡ GUARD BREAK IMPACT!', '#facc15');
+        for (let i = 0; i < 6; i++) {
+          this.addSpark(t.x + Math.random() * t.width, t.y + Math.random() * t.height, '#facc15');
+        }
+      }
+    }
+  }
+
+  private executeMichaelCounterKickHit(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const hitX = f.x + f.width / 2 + dir * 60;
+    const hitY = f.y + f.height / 2;
+
+    this.screenShake = Math.max(this.screenShake, 8);
+    this.addShockwave(hitX, hitY, '#facc15');
+    soundManager.playMichaelCounter();
+
+    const targets = this.getTargetsForAttacker(f, opponent);
+    for (const t of targets) {
+      if (t.hp > 0 && Math.abs((t.x + t.width / 2) - hitX) < 90 && Math.abs(t.y - f.y) < 80) {
+        this.applyRawDamage(t, MICHAEL_COUNTER_DAMAGE, dir * 20, -8, f);
+        t.hitStun = 45;
+        this.addTextParticle(t.x + t.width / 2, t.y - 40, '💥 KINETIC ROUNDHOUSE!', '#facc15');
+      }
+    }
+  }
+
+  private executeMichaelAxeKickFrame(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const isOverdrive = (f.michaelOverdriveTimer || 0) > 0;
+
+    // Rising phase -> Falling slam phase
+    if (f.actionTimer <= 20) {
+      f.michaelAxeKickPhase = 'fall';
+      f.vy = 22; // High velocity downward slam
+      f.vx = dir * 3;
+
+      // When touching the ground: impact slam shockwave!
+      if (f.isGrounded || f.y >= 490) {
+        f.michaelAxeKickPhase = 'slam';
+        f.vy = 0;
+        f.vx = 0;
+        this.screenShake = Math.max(this.screenShake, 11);
+        soundManager.playMichaelAxeKick();
+
+        const slamX = f.x + f.width / 2 + dir * 35;
+        const slamY = f.y + f.height - 10;
+        this.addShockwave(slamX, slamY, '#facc15');
+        this.addShockwave(slamX, slamY, '#ffffff');
+
+        const targets = this.getTargetsForAttacker(f, opponent);
+        for (const t of targets) {
+          if (t.hp > 0 && Math.abs((t.x + t.width / 2) - slamX) < (isOverdrive ? 150 : 110) && Math.abs(t.y - f.y) < 90) {
+            const damage = MICHAEL_AXE_KICK_DAMAGE * (isOverdrive ? 1.25 : 1.0);
+            this.applyRawDamage(t, damage, dir * 8, -13, f); // High vertical pop-up juggle
+            t.hitStun = 42;
+            t.isGrounded = false;
+            this.addTextParticle(t.x + t.width / 2, t.y - 45, '⚡ SEISMIC AXE IMPACT!', '#facc15');
+          }
+        }
+      }
+    }
+  }
+
+  private executeMichaelBarrageHit(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const isOverdrive = (f.michaelOverdriveTimer || 0) > 0;
+    const isMounted = !!f.isGeorgeMounted;
+    const hitX = f.x + f.width / 2 + dir * (isMounted ? 85 : 65);
+    const hitY = f.y + f.height / 3 + (Math.random() * 30 - 15);
+
+    // Build kinetic momentum on every strike
+    f.michaelKineticMeter = Math.min(100, (f.michaelKineticMeter || 0) + 2.5);
+
+    soundManager.playBarrageHit();
+    this.addSpark(hitX, hitY, '#facc15');
+
+    // Stand cry: "WRAAA!!"
+    if (f.actionTimer % 12 === 0) {
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, 'WRAAA!!', '#facc15');
+    }
+
+    const targets = this.getTargetsForAttacker(f, opponent);
+    const reach = isMounted ? 120 : 85;
+    for (const t of targets) {
+      if (t.hp > 0 && Math.abs((t.x + t.width / 2) - hitX) < reach && Math.abs(t.y - f.y) < 75) {
+        const damage = MICHAEL_BARRAGE_DAMAGE * (isOverdrive ? 1.25 : 1.0);
+        this.applyRawDamage(t, damage, dir * 2.5, -1.5, f);
+        t.hitStun = 18;
+      }
+    }
+  }
+
+  private executeMichaelBarrageFinisher(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const isOverdrive = (f.michaelOverdriveTimer || 0) > 0;
+    const isMounted = !!f.isGeorgeMounted;
+    const hitX = f.x + f.width / 2 + dir * (isMounted ? 95 : 75);
+    const hitY = f.y + f.height / 2;
+
+    this.screenShake = Math.max(this.screenShake, 8);
+    soundManager.playMichaelPalmThrust();
+    this.addShockwave(hitX, hitY, '#facc15');
+
+    f.michaelKineticMeter = Math.min(100, (f.michaelKineticMeter || 0) + 15);
+
+    const targets = this.getTargetsForAttacker(f, opponent);
+    const reach = isMounted ? 130 : 95;
+    for (const t of targets) {
+      if (t.hp > 0 && Math.abs((t.x + t.width / 2) - hitX) < reach && Math.abs(t.y - f.y) < 80) {
+        const damage = 85 * (isOverdrive ? 1.25 : 1.0);
+        this.applyRawDamage(t, damage, dir * 22, -6, f);
+        t.hitStun = 40;
+        this.addTextParticle(t.x + t.width / 2, t.y - 40, 'WRAAAA!! ⚡ DUAL PALM FINISHER!', '#facc15');
+      }
+    }
+  }
+
+  private executeMichaelUltimateFrame(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const targets = this.getTargetsForAttacker(f, opponent);
+    const target = targets[0] || opponent;
+
+    // Periodic hypersonic blitz strikes around target
+    if (f.actionTimer % 8 === 0 && f.actionTimer > 15) {
+      const remaining = f.michaelUltimateHitsRemaining || 7;
+      f.michaelUltimateHitsRemaining = remaining - 1;
+
+      // Rapid flash teleport around the enemy
+      const angles = [0, Math.PI * 0.5, Math.PI, Math.PI * 1.5, Math.PI * 0.25, Math.PI * 0.75, Math.PI * 1.25];
+      const ang = angles[remaining % angles.length];
+      const dist = 65;
+      f.x = target.x + Math.cos(ang) * dist;
+      f.y = Math.max(100, Math.min(500, target.y + Math.sin(ang) * dist));
+      f.facing = f.x < target.x ? 'right' : 'left';
+
+      soundManager.playMichaelPalmThrust();
+      this.screenShake = Math.max(this.screenShake, 5);
+      this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#facc15');
+      this.applyRawDamage(target, 45, (f.facing === 'right' ? 1 : -1) * 3, -1.5, f);
+      target.hitStun = 20;
+    } else if (f.actionTimer === 12) {
+      // Final Catastrophic Point-Blank Dual Palm Blast!
+      f.x = target.x - dir * 55;
+      f.y = target.y;
+      f.facing = dir === 1 ? 'right' : 'left';
+
+      this.screenShake = 18;
+      soundManager.playMichaelUltimate();
+      this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#facc15');
+      this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#ffffff');
+
+      this.applyRawDamage(target, MICHAEL_ULTIMATE_DAMAGE, dir * 26, -10, f);
+      target.hitStun = 60;
+      this.addTextParticle(target.x + target.width / 2, target.y - 55, '💥 MAXIMUM PRICE FULL RELEASE!!', '#facc15');
+      for (let i = 0; i < 12; i++) {
+        this.addSpark(target.x + Math.random() * target.width, target.y + Math.random() * target.height, '#facc15');
+      }
+    }
+  }
+
   private executeValentineBasicRevolverShot(attacker: Fighter, target: Fighter) {
     const isStand = !!attacker.isStandActive;
     const damage = isStand ? VALENTINE_PISTOL_DAMAGE + 20 : VALENTINE_PISTOL_DAMAGE;
@@ -5085,20 +6235,80 @@ export class GameEngine {
   }
 
   private executePucciAcidMelt(attacker: Fighter, target: Fighter) {
-    const poolX = attacker.x + (attacker.facing === 'right' ? 80 : -140);
+    const dir = attacker.facing === 'right' ? 1 : -1;
+    const poolX = attacker.x + (dir === 1 ? 50 : -220);
+    const poolWidth = 240;
     if (!this.acidPools) this.acidPools = [];
     this.acidPools.push({
       id: this.projectileId++,
       ownerId: attacker.id,
       x: poolX,
-      y: GROUND_Y - 14,
-      width: 140,
-      height: 20,
+      y: GROUND_Y - 18,
+      width: poolWidth,
+      height: 24,
       damagePerTick: PUCCI_ACID_DAMAGE_PER_TICK,
-      duration: PUCCI_ACID_DURATION,
-      color: '#a855f7',
+      duration: PUCCI_ACID_DURATION * 1.5,
+      color: '#c084fc',
     });
-    this.addShockwave(poolX + 70, GROUND_Y - 10, '#a855f7');
+
+    // Splashing digestive acid projectile wave
+    for (let i = 0; i < 4; i++) {
+      this.projectiles.push({
+        id: this.projectileId++,
+        ownerId: attacker.id,
+        type: 'pucci_acid_pool',
+        x: attacker.x + (dir === 1 ? attacker.width : -20),
+        y: attacker.y + 15 + i * 8,
+        vx: dir * (14 + i * 3),
+        vy: -3 + i * 2,
+        baseVx: dir * (14 + i * 3),
+        baseVy: -3 + i * 2,
+        width: 32,
+        height: 24,
+        damage: 18,
+        knockbackX: dir * 6,
+        knockbackY: -2,
+        isFrozenInTime: false,
+        life: 50,
+        maxLife: 50,
+        color: '#c084fc',
+      });
+    }
+
+    // Spawn bubbling acid foam & vapor particles
+    for (let p = 0; p < 12; p++) {
+      this.particles.push({
+        id: this.projectileId++,
+        x: poolX + Math.random() * poolWidth,
+        y: GROUND_Y - 14,
+        vx: (Math.random() - 0.5) * 4,
+        vy: -Math.random() * 4 - 1.5,
+        life: 35,
+        maxLife: 35,
+        size: 8 + Math.random() * 6,
+        color: '#c084fc',
+        type: 'acid_bubble',
+      });
+    }
+
+    soundManager.playAcidMelt();
+    this.screenShake = 12;
+    this.addShockwave(poolX + poolWidth / 2, GROUND_Y - 10, '#c084fc');
+    this.addShockwave(attacker.x + attacker.width / 2, attacker.y + attacker.height / 2, '#a855f7');
+    this.addTextParticle(poolX + poolWidth / 2, GROUND_Y - 45, '🧪 WHITESNAKE ACID DIGESTION STREAM!', '#c084fc');
+
+    // Direct hit check for enemies in front of Pucci
+    const targets = this.getTargetsForAttacker(attacker, target);
+    const hitbox = this.createOrientedHitbox(attacker, 180, 80, PUCCI_ACID_MELT_DAMAGE, 12, 4, {
+      hitStun: 50,
+    });
+    for (const t of targets) {
+      if (this.checkCollision(hitbox, t)) {
+        this.applyHit(attacker, t, hitbox);
+        t.acidMeltTimer = 120; // 2 seconds melting illusion!
+        this.addTextParticle(t.x + t.width / 2, t.y - 55, '💀 MELTING ILLUSION! FLESH DISSOLVING!', '#c084fc');
+      }
+    }
   }
 
   private executePucciStandDisc(attacker: Fighter, target: Fighter) {
@@ -5148,10 +6358,25 @@ export class GameEngine {
     if (currentStep > (f.pucciChantStep || 0) && currentStep <= 14) {
       f.pucciChantStep = currentStep;
       const word = WORDS_14[currentStep - 1];
-      soundManager.playPucciChant();
-      this.addTextParticle(f.x + f.width / 2, f.y - 45 - ((currentStep % 2) * 15), `📿 [${currentStep}/14] ${word}`, '#c084fc');
-      this.addMenacingParticle(f.x + (Math.random() * 60 - 30), f.y - 20, '★', '#c084fc');
+      soundManager.play14WordsChant(currentStep);
+      this.addTextParticle(f.x + f.width / 2, f.y - 50 - ((currentStep % 2) * 18), `📿 [${currentStep}/14] ${word}`, '#c084fc');
+      this.addMenacingParticle(f.x + (Math.random() * 60 - 30), f.y - 20, '★', '#facc15');
       this.addSpark(f.x + f.width / 2, f.y + f.height / 2, '#c084fc');
+
+      // Double-Helix Sacred Ascending Particle
+      this.particles.push({
+        id: this.projectileId++,
+        x: f.x + f.width / 2,
+        y: f.y + f.height / 2,
+        vx: Math.cos(currentStep * 0.8) * 3,
+        vy: -2.5,
+        life: 55,
+        maxLife: 55,
+        size: 14,
+        color: currentStep === 14 ? '#facc15' : '#c084fc',
+        type: 'spiral_word',
+        text: word.split(' ')[0],
+      });
     }
 
     if (f.actionTimer <= 2 && (f.pucciChantStep || 0) >= 14) {
@@ -5182,7 +6407,7 @@ export class GameEngine {
     };
     const prevAxis = this.activeGravityAxis || 'down';
     this.activeGravityAxis = nextAxisMap[prevAxis] || 'down';
-    this.screenShake = 22;
+    this.screenShake = 26;
     soundManager.playCmoonGravity();
 
     const cx = attacker.x + attacker.width / 2;
@@ -5193,6 +6418,41 @@ export class GameEngine {
     // Pucci gains Singularity focus (+15 gauge)
     if (attacker.cmoonGauge !== undefined) {
       attacker.cmoonGauge = Math.min(100, attacker.cmoonGauge + 15);
+    }
+
+    // Spawn a wave of directional gravity arrow particles spanning the entire arena pointing toward the new gravitational floor
+    const arenaW = this.getArenaWidth();
+    for (let a = 0; a < 16; a++) {
+      const arrowX = Math.random() * arenaW;
+      const arrowY = Math.random() * 420 + 40;
+      let vx = 0;
+      let vy = 0;
+      if (this.activeGravityAxis === 'right') {
+        vx = 14 + Math.random() * 8;
+        vy = 0;
+      } else if (this.activeGravityAxis === 'left') {
+        vx = -14 - Math.random() * 8;
+        vy = 0;
+      } else if (this.activeGravityAxis === 'up') {
+        vx = 0;
+        vy = -14 - Math.random() * 8;
+      } else {
+        vx = 0;
+        vy = 14 + Math.random() * 8;
+      }
+
+      this.particles.push({
+        id: this.projectileId++,
+        x: arrowX,
+        y: arrowY,
+        vx: vx,
+        vy: vy,
+        life: 45,
+        maxLife: 45,
+        size: 22,
+        color: '#10b981',
+        type: 'gravity_arrow',
+      });
     }
 
     // Fling all opponents along the new gravity axis vector with gravity slam armed
@@ -5207,42 +6467,42 @@ export class GameEngine {
       if (f.id !== attacker.id && f.hp > 0) {
         f.isGrounded = false;
         f.gravitySlamArmed = true;
-        f.hitStun = Math.max(f.hitStun || 0, 25);
+        f.hitStun = Math.max(f.hitStun || 0, 30);
         if (this.activeGravityAxis === 'right') {
-          f.vx = 22;
+          f.vx = 26;
           f.vy = -6;
         } else if (this.activeGravityAxis === 'left') {
-          f.vx = -22;
+          f.vx = -26;
           f.vy = -6;
         } else if (this.activeGravityAxis === 'up') {
-          f.vy = -24;
+          f.vy = -28;
         } else {
-          f.vy = 20;
+          f.vy = 24;
         }
       }
     }
 
-    for (let i = 0; i < 12; i++) {
-      this.addSpark(cx + (Math.random() - 0.5) * 120, cy + (Math.random() - 0.5) * 120, '#10b981');
+    for (let i = 0; i < 16; i++) {
+      this.addSpark(cx + (Math.random() - 0.5) * 160, cy + (Math.random() - 0.5) * 160, '#10b981');
     }
     this.addMenacingParticle(cx, cy - 60, 'ゴ', '#10b981');
     this.addMenacingParticle(cx + 40, cy - 80, 'ゴ', '#34d399');
-    this.addTextParticle(this.getArenaWidth() / 2, 140, `🌌 C-MOON GRAVITATIONAL SHIFT: ${this.activeGravityAxis.toUpperCase()}!`, '#34d399');
+    this.addTextParticle(this.getArenaWidth() / 2, 140, `🌌 3000G GRAVITATIONAL SHIFT: [ ${this.activeGravityAxis.toUpperCase()} ]`, '#34d399');
   }
 
   private executeCmoonInversionPunch(attacker: Fighter, target: Fighter) {
     const reach = 140;
     const hitbox = this.createOrientedHitbox(attacker, reach, 75, CMOON_INVERSION_PUNCH_DAMAGE, 24, 12, {
-      hitStun: 55,
+      hitStun: 60,
       yOffset: 5,
     });
 
-    this.screenShake = 18;
+    this.screenShake = 22;
     soundManager.playCmoonInversion();
     const cx = attacker.x + attacker.width / 2;
     const cy = attacker.y + attacker.height / 2;
     this.addShockwave(cx, cy, '#10b981');
-    this.addTextParticle(cx, attacker.y - 45, '🌀 SURFACE INVERSION STRIKE!', '#10b981');
+    this.addTextParticle(cx, attacker.y - 45, '🌀 SURFACE INVERSION STRIKE (INSIDE-OUT)!', '#10b981');
 
     const targets = this.getTargetsForAttacker(attacker, target);
     for (const t of targets) {
@@ -5251,8 +6511,23 @@ export class GameEngine {
         // Inversion effect: reverse and multiply target's velocity violently
         t.vx = -t.vx * 1.8;
         t.vy = -t.vy * 1.8;
+        t.inversionDistortTimer = 50; // Inside-out turning distortion!
         t.action = 'knockback';
-        for (let i = 0; i < 8; i++) {
+        
+        this.particles.push({
+          id: this.projectileId++,
+          x: t.x + t.width / 2,
+          y: t.y + t.height / 2,
+          vx: 0,
+          vy: 0,
+          life: 45,
+          maxLife: 45,
+          size: 44,
+          color: '#10b981',
+          type: 'inversion_spiral',
+        });
+
+        for (let i = 0; i < 12; i++) {
           this.addSpark(t.x + t.width / 2, t.y + t.height / 2, '#34d399');
         }
       }
@@ -5554,6 +6829,7 @@ export class GameEngine {
   }
 
   private updateAcidPools() {
+    if (this.timeStopState.isActive) return;
     if (!this.acidPools || this.acidPools.length === 0) return;
     for (let i = this.acidPools.length - 1; i >= 0; i--) {
       const pool = this.acidPools[i];
@@ -5563,18 +6839,36 @@ export class GameEngine {
         continue;
       }
 
+      // Spontaneous bubbling surface fizz & toxic vapors
+      if (this.frameCount % 8 === 0) {
+        this.particles.push({
+          id: this.projectileId++,
+          x: pool.x + Math.random() * pool.width,
+          y: GROUND_Y - 12,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -Math.random() * 2.8 - 0.5,
+          life: 25,
+          maxLife: 25,
+          size: 6 + Math.random() * 5,
+          color: '#c084fc',
+          type: 'acid_bubble',
+        });
+      }
+
       // Check all fighters standing inside acid pool
       const fighters = [this.player, this.ai, ...(this.teammate ? [this.teammate] : []), ...this.vampires];
       for (const f of fighters) {
         if (f && f.hp > 0 && f.id !== pool.ownerId && f.isGrounded) {
           const fCenter = f.x + f.width / 2;
           if (fCenter >= pool.x && fCenter <= pool.x + pool.width) {
-            // Slow down movement
-            f.vx *= 0.65;
-            if (this.frameCount % 20 === 0) {
+            // Heavily slow down and dissolve
+            f.vx *= 0.5;
+            f.acidMeltTimer = Math.max(f.acidMeltTimer || 0, 50);
+            if (this.frameCount % 15 === 0) {
               f.hp = Math.max(0, f.hp - pool.damagePerTick);
               this.addSpark(f.x + f.width / 2, GROUND_Y - 10, pool.color);
-              this.addTextParticle(f.x + f.width / 2, f.y - 25, '🧪 ACID MELT', '#a855f7');
+              this.addTextParticle(f.x + f.width / 2, f.y - 25, '🧪 ACID CORROSION', '#c084fc');
+              soundManager.playAcidMelt();
             }
           }
         }
@@ -5585,12 +6879,95 @@ export class GameEngine {
   // --- HITBOX & COMBAT LOGIC ---
   private executePunch(attacker: Fighter, target: Fighter) {
     if (attacker.charId === 'pucci') {
+      const form = attacker.pucciForm || 'whitesnake';
+      if (form === 'cmoon') {
+        // Dedicated C-Moon Gravitational Strike (Melee punch with green stand arm and shockwave)
+        const reach = 115;
+        const damage = attacker.isStandActive ? PUNCH_STAND_DAMAGE + 20 : PUNCH_DAMAGE + 15;
+        const hitbox = this.createOrientedHitbox(attacker, reach, 65, damage, 10, 4, { hitStun: 26 });
+        this.spawnOrientedBarrageArm(attacker, reach, '#10b981', '#34d399', false);
+        soundManager.playHit(true);
+        soundManager.playCmoonGravity();
+        this.screenShake = Math.max(this.screenShake, 5);
+
+        const dir = attacker.facing === 'right' ? 1 : -1;
+        const punchX = attacker.x + (dir === 1 ? attacker.width + 15 : -25);
+        const punchY = attacker.y + 10;
+        this.addMenacingParticle(punchX, punchY, 'ゴ', '#10b981');
+
+        const targets = this.getTargetsForAttacker(attacker, target);
+        for (const t of targets) {
+          if (this.checkCollision(hitbox, t)) {
+            this.applyHit(attacker, t, hitbox);
+            this.addSpark(t.x + t.width / 2, t.y + t.height / 2, '#34d399');
+            this.addShockwave(t.x + t.width / 2, t.y + t.height / 2, '#10b981');
+            if (attacker.cmoonGauge !== undefined) {
+              attacker.cmoonGauge = Math.min(100, attacker.cmoonGauge + 4);
+            }
+          }
+        }
+        return;
+      } else if (form === 'made_in_heaven') {
+        // Dedicated Made in Heaven Lightning Speed Chop
+        const reach = 125;
+        const damage = attacker.isStandActive ? PUNCH_STAND_DAMAGE + 25 : PUNCH_DAMAGE + 20;
+        const hitbox = this.createOrientedHitbox(attacker, reach, 65, damage, 12, 5, { hitStun: 28 });
+        this.spawnOrientedBarrageArm(attacker, reach, '#facc15', '#ffffff', true);
+        soundManager.playHit(true);
+        soundManager.playMiHBlitz();
+        this.screenShake = Math.max(this.screenShake, 5);
+
+        const dir = attacker.facing === 'right' ? 1 : -1;
+        const punchX = attacker.x + (dir === 1 ? attacker.width + 15 : -25);
+        const punchY = attacker.y + 10;
+        this.addMenacingParticle(punchX, punchY, '★', '#facc15');
+
+        const targets = this.getTargetsForAttacker(attacker, target);
+        for (const t of targets) {
+          if (this.checkCollision(hitbox, t)) {
+            this.applyHit(attacker, t, hitbox);
+            this.addSpark(t.x + t.width / 2, t.y + t.height / 2, '#facc15');
+          }
+        }
+        return;
+      }
+
       this.executePucciBasicPistolShot(attacker, target);
       return;
     }
 
     if (attacker.charId === 'funny_valentine') {
       this.executeValentineBasicRevolverShot(attacker, target);
+      return;
+    }
+
+    if (attacker.charId === 'perstein') {
+      soundManager.playPersteinChainWhip();
+      const chainReach = 280; // Long-range 70m Drive Chain Lash!
+      const damage = attacker.isStandActive ? PUNCH_STAND_DAMAGE + 20 : PUNCH_DAMAGE + 15;
+      const hitbox = this.createOrientedHitbox(attacker, chainReach, 65, damage, 11, 4, { hitStun: 28 });
+      this.spawnOrientedBarrageArm(attacker, chainReach, '#38bdf8', '#cbd5e1', true);
+      soundManager.playHit(true);
+      this.screenShake = Math.max(this.screenShake, 5);
+
+      const dir = attacker.facing === 'right' ? 1 : -1;
+      const punchX = attacker.x + (dir === 1 ? attacker.width + 25 : -35);
+      const punchY = attacker.y + 10;
+      this.addMenacingParticle(punchX, punchY, '⛓️', '#38bdf8');
+
+      // Spawn chain glints along the lash
+      for (let i = 0; i < 5; i++) {
+        this.addSpark(attacker.x + (dir === 1 ? attacker.width + i * 50 : -i * 50), attacker.y + 25, '#94a3b8');
+      }
+
+      const targets = this.getTargetsForAttacker(attacker, target);
+      for (const t of targets) {
+        if (this.checkCollision(hitbox, t)) {
+          this.applyHit(attacker, t, hitbox);
+          this.addSpark(t.x + t.width / 2, t.y + t.height / 2, '#38bdf8');
+          this.addShockwave(t.x + t.width / 2, t.y + t.height / 2, '#38bdf8');
+        }
+      }
       return;
     }
 
@@ -5703,9 +7080,21 @@ export class GameEngine {
 
   private executeBarrageHit(attacker: Fighter, target: Fighter) {
     const isSilverChariot = attacker.charId === 'silver_chariot';
-    const reach = attacker.isStandActive ? (isSilverChariot ? 95 : 85) : (isSilverChariot ? 80 : 70);
+    const isPerstein = attacker.charId === 'perstein';
+    const reach = isPerstein
+      ? (attacker.isStandActive ? 320 : 260)
+      : attacker.isStandActive ? (isSilverChariot ? 95 : 85) : (isSilverChariot ? 80 : 70);
 
-    if (isSilverChariot) {
+    if (isPerstein) {
+      if (this.frameCount % 4 === 0) soundManager.playPersteinChainShred();
+      this.spawnOrientedBarrageArm(
+        attacker,
+        reach,
+        '#38bdf8',
+        '#e2e8f0',
+        true
+      );
+    } else if (isSilverChariot) {
       soundManager.playRapierThrust();
       this.spawnOrientedBarrageArm(
         attacker,
@@ -5724,7 +7113,7 @@ export class GameEngine {
       );
     }
 
-    const damage = attacker.isStandActive ? BARRAGE_STAND_DAMAGE_PER_HIT : BARRAGE_DAMAGE_PER_HIT;
+    const damage = isPerstein ? (attacker.isStandActive ? BARRAGE_STAND_DAMAGE_PER_HIT + 3 : BARRAGE_DAMAGE_PER_HIT + 2) : (attacker.isStandActive ? BARRAGE_STAND_DAMAGE_PER_HIT : BARRAGE_DAMAGE_PER_HIT);
     const hitbox = this.createOrientedHitbox(attacker, reach, 55, damage, 1.8, 0.8, {
       isBarrage: true,
     });
@@ -5740,10 +7129,12 @@ export class GameEngine {
         : attacker.charId === 'gappy' ? (Math.random() < 0.7 ? 'オラ' : 'ゴ')
         : attacker.charId === 'king_crimson' ? (Math.random() < 0.7 ? 'ドゴ' : 'ゴ')
         : attacker.charId === 'silver_chariot' ? (Math.random() < 0.7 ? '⚔️' : 'ゴ')
+        : attacker.charId === 'perstein' ? (Math.random() < 0.7 ? '⛓️' : '⚙️')
         : 'ゴ';
       const bColor = attacker.charId === 'dio' ? 'rgba(250, 204, 21, 0.95)'
         : attacker.charId === 'gappy' ? 'rgba(56, 189, 248, 0.95)'
         : attacker.charId === 'king_crimson' ? 'rgba(251, 113, 133, 0.95)'
+        : attacker.charId === 'perstein' ? 'rgba(56, 189, 248, 0.95)'
         : 'rgba(192, 132, 252, 0.95)';
       this.addMenacingParticle(armX, armY, bGlyph, bColor);
     }
@@ -6711,6 +8102,22 @@ export class GameEngine {
   }
 
   private checkCollision(hitbox: Hitbox, target: Fighter, attacker?: Fighter): boolean {
+    // If target is Arabian Fat hiding behind mirror: check mirror object hitbox!
+    if (target.charId === 'arabian_fat' && target.isHidingBehindMirror && target.mirrorObject && !target.mirrorObject.isDestroyed) {
+      const m = target.mirrorObject;
+      const collidesWithMirror = (
+        hitbox.x < m.x + m.width &&
+        hitbox.x + hitbox.width > m.x &&
+        hitbox.y < m.y + m.height &&
+        hitbox.y + hitbox.height > m.y
+      );
+
+      if (collidesWithMirror) {
+        this.damageMirrorObject(target, hitbox.damage, attacker);
+      }
+      return false; // User itself is hidden behind mirror, isTargetable = false
+    }
+
     const targetAABB = this.getFighterAABB(target);
     const axis = this.activeGravityAxis || 'down';
 
@@ -6721,6 +8128,48 @@ export class GameEngine {
       hitbox.y < targetAABB.y + targetAABB.height &&
       hitbox.y + hitbox.height > targetAABB.y
     );
+  }
+
+  public damageMirrorObject(target: Fighter, damage: number, attacker?: Fighter | null) {
+    if (!target.mirrorObject || target.mirrorObject.isDestroyed) return;
+
+    target.mirrorObject.hp = Math.max(0, target.mirrorObject.hp - damage);
+    target.mirrorObject.hitFlashTimer = 8;
+    soundManager.playHit(true);
+    this.screenShake = Math.max(this.screenShake, 5);
+
+    const mx = target.mirrorObject.x + target.mirrorObject.width / 2;
+    const my = target.mirrorObject.y + target.mirrorObject.height / 2;
+    this.addShockwave(mx, my, '#38bdf8');
+    this.addTextParticle(mx, target.mirrorObject.y - 25, `🪞 MIRROR HIT! (-${Math.round(damage)})`, '#38bdf8');
+
+    if (target.mirrorObject.hp <= 0) {
+      // MIRROR SHATTERED & USER EXPOSED (THE SUN REMAINS ACTIVE IN THE SKY!)
+      target.mirrorObject.isDestroyed = true;
+      target.isHidingBehindMirror = false;
+      target.sunActive = true; // The Sun Stand does NOT disappear!
+      target.hp = Math.min(target.hp, SUN_EXPOSED_PANIC_HP);
+      target.isInvulnerable = false;
+      target.invulnerableTimer = 0;
+      target.guardBreakTimer = 0; // Immediately allow full movement & actions
+      target.action = 'sun_exposed_panic';
+      target.actionTimer = 25; // Brief 0.4s reaction frame, smoothly returning to idle
+      target.actionDuration = 25;
+      target.sunExposedTimer = 360; // 6s comedic panic expression
+
+      soundManager.playMirrorShatter();
+      soundManager.playArabiaFatPanic();
+      this.screenShake = 22;
+
+      this.addShockwave(mx, my, '#ef4444');
+      this.addShockwave(mx, my, '#ffffff');
+      this.addTextParticle(mx, target.mirrorObject.y - 45, '💥🪞 MIRROR SHATTERED! ARABIA FAT EXPOSED (1000 HP)! THE SUN STILL BLAZES!', '#ef4444');
+
+      for (let s = 0; s < 18; s++) {
+        this.addSpark(mx + (Math.random() * 80 - 40), my + (Math.random() * 80 - 40), '#38bdf8');
+        this.addSpark(mx + (Math.random() * 80 - 40), my + (Math.random() * 80 - 40), '#ffffff');
+      }
+    }
   }
 
   private triggerDipezAutoBlink(target: Fighter, attacker?: Fighter | null) {
@@ -6828,6 +8277,37 @@ export class GameEngine {
       this.addTextParticle(target.x + target.width / 2, target.y - 45, '🔮 [EPITAPH: PRECOGNITION AUTO-DODGE!]', '#fb7185');
       soundManager.playPoseSound('king_crimson');
       return; // Attacker's hit misses completely!
+    }
+
+    // 1.9. Check if Target is Michael Junister with Kinetic Counter Active (Flash Step Counter Kick)
+    if (target.charId === 'michael' && (target.michaelCounterActive || target.action === 'michael_counter_stance')) {
+      target.michaelCounterActive = false;
+      target.isParrying = false;
+      target.action = 'michael_counter_kick';
+      target.actionTimer = 24;
+      target.actionDuration = 24;
+      target.invulnerableTimer = 35;
+
+      // Flash step behind attacker
+      const behindX = attacker.facing === 'right' ? attacker.x - 45 : attacker.x + attacker.width + 15;
+      target.x = Math.max(30, Math.min(this.getArenaWidth() - 70, behindX));
+      target.y = attacker.y;
+      target.facing = attacker.facing === 'right' ? 'right' : 'left';
+
+      // Hat Price absorbs 100% of the intercepted kinetic impact!
+      target.michaelKineticMeter = 100;
+      target.michaelKineticStacks = 5;
+
+      soundManager.playMichaelCounter();
+      this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#facc15');
+      this.addTextParticle(target.x + target.width / 2, target.y - 55, '⚡ 100% IMPACT ABSORBED (MAX PRICE!)', '#facc15');
+      this.addTextParticle(target.x + target.width / 2, target.y - 35, '⚡ FLASH STEP COUNTER KICK!', '#facc15');
+
+      const kickDir = target.facing === 'right' ? 1 : -1;
+      this.applyRawDamage(attacker, MICHAEL_COUNTER_DAMAGE, kickDir * 18, -7, target);
+      attacker.hitStun = 45;
+      this.screenShake = 9;
+      return; // Attacker's hit is cleanly countered!
     }
 
     // 2. Check if Target is Parrying (Jotaro Inhale & Counter)
@@ -6964,6 +8444,31 @@ export class GameEngine {
       return;
     }
 
+    // 2.12. Check if Target is Wally Wable / Perstein with Invisible Drive Chain Deflection Active
+    if (target.charId === 'perstein' && target.persteinDeflectionTimer && target.persteinDeflectionTimer > 0) {
+      soundManager.playPersteinDeflection();
+      soundManager.playHit(true);
+      target.invulnerableTimer = 16;
+      target.persteinDeflectReactionTimer = 24; // Invisible drive chains instantaneously manifest to intercept & deflect
+      target.persteinDeflectImpactX = attacker ? attacker.x + attacker.width / 2 : target.x + target.width / 2;
+      target.persteinDeflectImpactY = attacker ? attacker.y + attacker.height / 2 : target.y + target.height / 2;
+      target.persteinDeflectAngle = Math.atan2((attacker ? attacker.y : target.y) - target.y, (attacker ? attacker.x : target.x) - target.x);
+
+      this.addShockwave(target.persteinDeflectImpactX, target.persteinDeflectImpactY, '#38bdf8');
+      this.addTextParticle(target.x + target.width / 2, target.y - 40, '⚙️ INVISIBLE DRIVE CHAIN: INTERCEPT & RICOCHET!', '#38bdf8');
+
+      if (attacker) {
+        attacker.hp = Math.max(0, attacker.hp - 25);
+        attacker.hitStun = 22;
+        attacker.vx = (attacker.x > target.x ? 1 : -1) * 14;
+        attacker.vy = -6;
+        for (let s = 0; s < 10; s++) {
+          this.addSpark(attacker.x + attacker.width / 2 + (Math.random() * 24 - 12), attacker.y + attacker.height / 2 + (Math.random() * 24 - 12), '#facc15');
+        }
+      }
+      return;
+    }
+
     if (target.invulnerableTimer > 0 && !hitbox.isBarrage) return;
 
     // Attacker gains combo & energy
@@ -6991,8 +8496,15 @@ export class GameEngine {
     if (attacker.gappyAttackTheftTimer && attacker.gappyAttackTheftTimer > 0) {
       dmgMult *= 0.50; // 50% Attack reduction from Gappy Shave & Moisture Theft
     }
+    if (attacker.charId === 'michael' && attacker.michaelOverdriveTimer && attacker.michaelOverdriveTimer > 0) {
+      dmgMult *= 1.25; // +25% kinetic surge damage during Hat Price Overdrive
+    }
     const baseDamage = hitbox.damage * dmgMult;
     const effectiveDamage = target.isArmorOff ? baseDamage * ARMOR_OFF_DEFENSE_PENALTY : baseDamage;
+
+    if (attacker.charId === 'michael') {
+      this.addSpark(target.x + target.width / 2, target.y + target.height / 2, '#facc15');
+    }
 
     // 3. IF TARGET IS FROZEN IN TIME STOP -> DAMAGE STACKING!
     if (this.timeStopState.isActive && target.isFrozenByTimeStop) {
@@ -7083,6 +8595,37 @@ export class GameEngine {
     for (let i = 0; i < (hitbox.isBarrage ? 3 : 8); i++) {
       this.addSpark(impactX, impactY, attacker.isStandActive ? '#facc15' : '#ffffff');
     }
+
+    // Michael Junister Hat Price: Kinetic Impact Absorption (Charges meter upon receiving physical impact)
+    if (target.charId === 'michael') {
+      const absorbed = Math.min(45, Math.max(10, Math.round(effectiveDamage * 0.9)));
+      target.michaelKineticMeter = Math.min(100, (target.michaelKineticMeter || 0) + absorbed);
+      target.michaelKineticStacks = Math.min(5, Math.floor(target.michaelKineticMeter / 20));
+      this.addSpark(impactX, impactY, '#facc15');
+      this.addTextParticle(target.x + target.width / 2, target.y - 45, `⚡ IMPACT ABSORBED +${absorbed}%`, '#facc15');
+      soundManager.playMichaelGoldAura();
+
+      // UNHORSED REACTION: Michael is knocked off George upon taking hits while mounted!
+      if (target.isGeorgeMounted) {
+        target.isGeorgeMounted = false;
+        target.georgePendingRemount = true;
+        target.georgeFallOffTimer = 48; // Recovery window before George gallops up to remount
+        target.georgeState = 'rearing';
+        target.georgeX = target.x;
+
+        // Dynamic parabolic tumble off the horse saddle
+        const knockDir = attacker.facing === 'right' ? 1 : -1;
+        target.vx = knockDir * (hitbox.isBarrage ? 7.5 : 11);
+        target.vy = -6.5;
+        target.isGrounded = false;
+        target.action = 'knockback';
+        target.hitStun = Math.max(target.hitStun, 32);
+
+        soundManager.playGeorgeNeigh();
+        this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#ef4444');
+        this.addTextParticle(target.x + target.width / 2, target.y - 65, '🐎💥 JATOH DARI KUDA! (UNHORSED TUMBLE)', '#f87171');
+      }
+    }
   }
 
   private applyRawDamage(target: Fighter, damage: number, knockX: number, knockY: number, attacker?: Fighter | null) {
@@ -7124,6 +8667,31 @@ export class GameEngine {
     target.vx = knockX;
     target.vy = knockY;
     target.isGrounded = false;
+
+    // Michael Junister Hat Price: Kinetic Impact Absorption (Charges meter from raw damage/explosions/projectiles)
+    if (target.charId === 'michael') {
+      const absorbed = Math.min(45, Math.max(10, Math.round(damage * 0.85)));
+      target.michaelKineticMeter = Math.min(100, (target.michaelKineticMeter || 0) + absorbed);
+      target.michaelKineticStacks = Math.min(5, Math.floor(target.michaelKineticMeter / 20));
+      this.addSpark(target.x + target.width / 2, target.y + target.height / 2, '#facc15');
+      this.addTextParticle(target.x + target.width / 2, target.y - 45, `⚡ IMPACT ABSORBED +${absorbed}%`, '#facc15');
+      soundManager.playMichaelGoldAura();
+
+      // UNHORSED REACTION on heavy raw damage
+      if (target.isGeorgeMounted && damage >= 8) {
+        target.isGeorgeMounted = false;
+        target.georgePendingRemount = true;
+        target.georgeFallOffTimer = 48;
+        target.georgeState = 'rearing';
+        target.georgeX = target.x;
+
+        target.action = 'knockback';
+        target.hitStun = Math.max(target.hitStun, 30);
+        soundManager.playGeorgeNeigh();
+        this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#ef4444');
+        this.addTextParticle(target.x + target.width / 2, target.y - 65, '🐎💥 JATOH DARI KUDA! (UNHORSED TUMBLE)', '#f87171');
+      }
+    }
   }
 
   private applyPhysics(f: Fighter) {
@@ -7268,9 +8836,19 @@ export class GameEngine {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
 
-      // If time is stopped, frozen knives don't move
+      // If Time Stop is active, freeze any projectile immediately!
+      if (this.timeStopState.isActive) {
+        if (!p.isFrozenInTime) {
+          p.isFrozenInTime = true;
+          if (p.baseVx === undefined || p.baseVx === 0) p.baseVx = p.vx;
+          if (p.baseVy === undefined || p.baseVy === 0) p.baseVy = p.vy;
+          p.vx = 0;
+          p.vy = 0;
+        }
+      }
+
+      // If frozen in stopped time, skip movement, collision, and life decay
       if (p.isFrozenInTime) {
-        // Floating vibration effect
         continue;
       }
 
@@ -7288,6 +8866,33 @@ export class GameEngine {
           continue;
         }
       }
+
+      // Check Perstein Invisible Drive Chain Deflection (auto-manifests to intercept incoming projectiles)
+      const persteinDefenders = this.getAllActiveFighters().filter(f => f.charId === 'perstein' && f.persteinDeflectionTimer && f.persteinDeflectionTimer > 0 && f.team !== attackerTeam && f.id !== p.ownerId);
+      let pDeflected = false;
+      for (const def of persteinDefenders) {
+        const defCenterX = def.x + def.width / 2;
+        const defCenterY = def.y + def.height / 2;
+        const targetDist = Math.hypot(defCenterX - p.x, defCenterY - p.y);
+        if (targetDist < 110) {
+          def.persteinDeflectReactionTimer = 24;
+          def.persteinDeflectImpactX = p.x;
+          def.persteinDeflectImpactY = p.y;
+          def.persteinDeflectAngle = Math.atan2(p.y - defCenterY, p.x - defCenterX);
+          this.addSpark(p.x, p.y, '#38bdf8');
+          for (let s = 0; s < 8; s++) {
+            this.addSpark(p.x + (Math.random() * 24 - 12), p.y + (Math.random() * 24 - 12), '#facc15');
+          }
+          this.addShockwave(p.x, p.y, '#38bdf8');
+          this.addTextParticle(p.x, p.y - 20, '⚙️ INVISIBLE DRIVE CHAIN: INTERCEPT!', '#38bdf8');
+          soundManager.playPersteinDeflection();
+          soundManager.playHit(true);
+          this.projectiles.splice(i, 1);
+          pDeflected = true;
+          break;
+        }
+      }
+      if (pDeflected) continue;
 
       // 2. Custom behavior for Josuke Homing Shard (restoring movement)
       if (p.type === 'josuke_shard') {
@@ -7414,7 +9019,8 @@ export class GameEngine {
 
       // Special Calamity Car Multi-Target Penetration Impact ("mental gak nembus, universal untuk lawan")
       if (p.type === 'calamity_car') {
-        if (p.life <= 0 || p.x < -100 || p.x > this.getArenaWidth() + 100) {
+        const arenaW = this.getArenaWidth();
+        if (p.life <= 0 || (p.vx > 0 && p.x > arenaW + 350) || (p.vx < 0 && p.x < -p.width - 350)) {
           this.projectiles.splice(i, 1);
           continue;
         }
@@ -7453,7 +9059,7 @@ export class GameEngine {
 
       // Special Dipez Laser Beams (Multi-Target Penetration, Continuous Beams)
       if (p.type === 'dipez_laser_beam' || p.type === 'dipez_map_laser_beam') {
-        if (p.life <= 0 || p.x < -100 || p.x > this.getArenaWidth() + 100) {
+        if (p.life <= 0 || !attacker || attacker.hp <= 0) {
           this.projectiles.splice(i, 1);
           continue;
         }
@@ -7491,6 +9097,29 @@ export class GameEngine {
           }
         }
         continue; // Keep the laser in play for its full life duration!
+      }
+
+      // Solar Flare Bomb Ground Impact & Detonation
+      if (p.type === 'sun_flare_bomb' && p.y >= GROUND_Y - 25) {
+        soundManager.playMeteorExplosion();
+        this.screenShake = 8;
+        const bombCenterX = p.x + p.width / 2;
+        const bombCenterY = GROUND_Y - 15;
+        this.addShockwave(bombCenterX, bombCenterY, '#ef4444');
+        this.addShockwave(bombCenterX, bombCenterY, '#f97316');
+        this.addTextParticle(bombCenterX, bombCenterY - 30, '💥 SOLAR FLARE BURST!', '#ef4444');
+        for (let s = 0; s < 8; s++) {
+          this.addSpark(bombCenterX + (Math.random() * 30 - 15), bombCenterY + (Math.random() * 20 - 10), '#f97316');
+        }
+        for (const t of possibleTargets) {
+          if (Math.abs((t.x + t.width / 2) - bombCenterX) < 95) {
+            this.applyRawDamage(t, p.damage, (t.x > bombCenterX ? 1 : -1) * 12, -8, attacker);
+            t.burnedTimer = 180;
+            t.hitStun = 32;
+          }
+        }
+        this.projectiles.splice(i, 1);
+        continue;
       }
 
       let target: Fighter | null = null;
@@ -7787,6 +9416,7 @@ export class GameEngine {
   }
 
   private updateParticles() {
+    if (this.timeStopState.isActive) return; // Freeze particle decay & movement in Time Stop
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.x += p.vx;
@@ -7794,6 +9424,443 @@ export class GameEngine {
       p.life--;
       if (p.life <= 0) {
         this.particles.splice(i, 1);
+      }
+    }
+  }
+
+  // ==========================================
+  // WALLY WABLE / PERSTEIN (WABLE THE METAL CUTTER)
+  // ==========================================
+  private handlePersteinSkills(f: Fighter, input: any, opponent: Fighter): boolean {
+    const isTraining = this.matchConfig.mode === 'training';
+    const isSilenced = (f.silencedTimer || 0) > 0;
+    if (isSilenced) return false;
+
+    // 1. Skill 1: 70m Motorcycle Chain Whip & Pull (perstein_chain_whip)
+    if (input.skill1 && f.cooldowns.skill1 <= 0 && (f.energy >= PERSTEIN_CHAIN_WHIP_COST || isTraining)) {
+      f.action = 'perstein_chain_whip';
+      f.actionTimer = 22;
+      f.actionDuration = 22;
+      f.cooldowns.skill1 = PERSTEIN_CHAIN_WHIP_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_CHAIN_WHIP_COST;
+      f.vx = 0;
+      soundManager.playPersteinChainWhip();
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, '⛓️ 70m DRIVE CHAIN SNARE!', '#38bdf8');
+      return true;
+    }
+
+    // 2. Skill 2: High-RPM Drive Chain Shred (perstein_chain_bind_shred)
+    if (input.skill2 && f.cooldowns.skill2 <= 0 && (f.energy >= PERSTEIN_SHRED_COST || isTraining)) {
+      f.action = 'perstein_chain_bind_shred';
+      f.actionTimer = 32;
+      f.actionDuration = 32;
+      f.cooldowns.skill2 = PERSTEIN_SHRED_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_SHRED_COST;
+      const dir = f.facing === 'right' ? 1 : -1;
+      f.vx = dir * 3.5;
+      soundManager.playPersteinChainShred();
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, '⛓️ HIGH-RPM DRIVE CHAIN SHRED!', '#94a3b8');
+      return true;
+    }
+
+    // 3. Skill 3: Spark Blast & Concrete Friction (perstein_spark_ignition)
+    if (input.skill3 && f.cooldowns.skill3 <= 0 && (f.energy >= PERSTEIN_SPARK_COST || isTraining)) {
+      f.action = 'perstein_spark_ignition';
+      f.actionTimer = 20;
+      f.actionDuration = 20;
+      f.cooldowns.skill3 = PERSTEIN_SPARK_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_SPARK_COST;
+      f.vx = 0;
+      soundManager.playPersteinSpark();
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, '✨ METAL FRICTION SPARK BLAST!', '#facc15');
+      return true;
+    }
+
+    // 4. Skill 4: Invisible Drive Chain Deflection (perstein_awaken_deflection)
+    if (input.skill4 && f.cooldowns.skill4 <= 0 && (f.energy >= PERSTEIN_DEFLECTION_COST || isTraining)) {
+      f.action = 'perstein_awaken_deflection';
+      f.actionTimer = 20;
+      f.actionDuration = 20;
+      f.cooldowns.skill4 = PERSTEIN_DEFLECTION_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_DEFLECTION_COST;
+      f.vx = 0;
+      f.persteinDeflectionTimer = PERSTEIN_DEFLECTION_DURATION;
+      soundManager.playPersteinDeflection();
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, '⚙️ INVISIBLE DRIVE CHAIN DEFLECTION (4s)', '#38bdf8');
+      return true;
+    }
+
+    // 5. Skill 5: Direct Touch Flesh Tear (perstein_awaken_touch)
+    if (input.skill5 && f.cooldowns.skill5 <= 0 && (f.energy >= PERSTEIN_FLESH_TEAR_COST || isTraining)) {
+      f.action = 'perstein_awaken_touch';
+      f.actionTimer = 24;
+      f.actionDuration = 24;
+      f.cooldowns.skill5 = PERSTEIN_FLESH_TEAR_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_FLESH_TEAR_COST;
+      const dir = f.facing === 'right' ? 1 : -1;
+      f.vx = dir * 6;
+      soundManager.playPersteinUltimate();
+      this.addTextParticle(f.x + f.width / 2, f.y - 45, '🩸 DIRECT TOUCH FLESH TEAR (AWAKEN 1)!', '#ef4444');
+      return true;
+    }
+
+    // 6. Ultimate: Silence After The Storm - Snare, Reel, Spin & Crush (perstein_ultimate)
+    if (input.ultimate && f.cooldowns.ultimate <= 0 && (f.energy >= PERSTEIN_ULTIMATE_COST || isTraining)) {
+      f.action = 'perstein_ultimate';
+      f.actionTimer = 130;
+      f.actionDuration = 130;
+      f.cooldowns.ultimate = PERSTEIN_ULTIMATE_COOLDOWN;
+      if (!isTraining) f.energy -= PERSTEIN_ULTIMATE_COST;
+      f.vx = 0;
+      f.vy = 0;
+      f.isInvulnerable = true;
+      f.invulnerableTimer = 135;
+
+      const victim = (opponent && opponent.hp > 0) ? opponent : this.getAllActiveFighters().find(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+      f.persteinUltVictimId = victim ? victim.id : null;
+      f.persteinUltPhase = 'snare';
+
+      soundManager.playPersteinChainWhip();
+      soundManager.playPersteinUltimate();
+      this.screenShake = 22;
+      this.addShockwave(f.x + f.width / 2, f.y + f.height / 2, '#38bdf8');
+      return true;
+    }
+
+    return false;
+  }
+
+  private executePersteinChainWhip(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const whipReach = PERSTEIN_CHAIN_WHIP_RANGE; // 850px full arena snare reach
+    const whipBox: Hitbox = {
+      x: dir === 1 ? f.x + f.width : f.x - whipReach,
+      y: f.y + 5,
+      width: whipReach,
+      height: 55,
+      damage: PERSTEIN_CHAIN_WHIP_DAMAGE,
+      knockbackX: dir * 4,
+      knockbackY: -4,
+    };
+
+    soundManager.playPersteinChainWhip();
+    this.screenShake = 8;
+
+    // Spawn whip visual particles along full 850px reach
+    for (let seg = 0; seg < 16; seg++) {
+      const segX = f.x + f.width / 2 + dir * (seg * (whipReach / 16));
+      this.addSpark(segX, f.y + 25 + (Math.random() * 12 - 6), '#94a3b8');
+      if (seg % 3 === 0) {
+        this.addSpark(segX, f.y + 25, '#38bdf8');
+      }
+    }
+
+    // Check collision with opponent
+    const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+    for (const target of targets) {
+      if (this.checkCollision(whipBox, target)) {
+        this.applyHit(f, target, whipBox);
+        // Pull target towards Perstein across screen
+        const pullTargetX = f.x + dir * 65;
+        target.x = pullTargetX;
+        target.vx = -dir * 12;
+        target.vy = -4;
+        target.hitStun = 34;
+        soundManager.playHit(true);
+        this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#38bdf8');
+        this.addTextParticle(target.x + target.width / 2, target.y - 45, '⛓️ 70m CHAIN SNARED & REELED IN!', '#38bdf8');
+      }
+    }
+  }
+
+  private executePersteinShredHit(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const hitBox: Hitbox = {
+      x: dir === 1 ? f.x + f.width - 15 : f.x - 180,
+      y: f.y + 5,
+      width: 195,
+      height: 65,
+      damage: PERSTEIN_SHRED_DAMAGE_PER_HIT,
+      knockbackX: dir * 2.5,
+      knockbackY: -1.2,
+      isBarrage: true,
+    };
+
+    soundManager.playPersteinChainShred();
+    this.screenShake = 3;
+
+    // High friction sparks
+    const sawX = dir === 1 ? f.x + f.width + 45 : f.x - 45;
+    for (let s = 0; s < 4; s++) {
+      this.addSpark(sawX + (Math.random() * 20 - 10), f.y + 30 + (Math.random() * 20 - 10), '#facc15');
+    }
+
+    const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+    for (const target of targets) {
+      if (this.checkCollision(hitBox, target)) {
+        this.applyHit(f, target, hitBox);
+      }
+    }
+  }
+
+  private executePersteinShredFinisher(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const finisherBox: Hitbox = {
+      x: dir === 1 ? f.x + f.width - 15 : f.x - 220,
+      y: f.y,
+      width: 235,
+      height: 75,
+      damage: 70,
+      knockbackX: dir * 16,
+      knockbackY: -8,
+    };
+
+    soundManager.playPersteinUltimate();
+    this.screenShake = 12;
+
+    const sawX = dir === 1 ? f.x + f.width + 55 : f.x - 55;
+    this.addShockwave(sawX, f.y + 35, '#38bdf8');
+
+    const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+    for (const target of targets) {
+      if (this.checkCollision(finisherBox, target)) {
+        this.applyHit(f, target, finisherBox);
+        this.addTextParticle(target.x + target.width / 2, target.y - 45, '⛓️💥 DRIVE CHAIN CLEAVE FINISHER!', '#38bdf8');
+      }
+    }
+  }
+
+  private executePersteinSparkIgnition(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const startX = dir === 1 ? f.x + f.width + 10 : f.x - 10;
+    const startY = f.y + f.height - 15;
+
+    soundManager.playPersteinSpark();
+    this.screenShake = 9;
+    this.addShockwave(startX, startY, '#facc15');
+
+    // Spawn 7 fan-out hot spark projectiles spanning the entire floor (850px+ travel!)
+    for (let p = -3; p <= 3; p++) {
+      const angle = p * 0.11;
+      const speed = 18 + Math.random() * 6;
+      const projVx = dir * Math.cos(angle) * speed;
+      const projVy = Math.sin(angle) * speed - 1.8;
+      this.projectiles.push({
+        id: this.projectileId++,
+        ownerId: f.id,
+        type: 'perstein_spark_wave',
+        x: startX,
+        y: startY - 10 + p * 8,
+        vx: projVx,
+        vy: projVy,
+        baseVx: projVx,
+        baseVy: projVy,
+        width: 22,
+        height: 22,
+        damage: PERSTEIN_SPARK_DAMAGE / 3,
+        knockbackX: dir * 10,
+        knockbackY: -4,
+        isFrozenInTime: false,
+        life: 50, // Long-range travel across the entire screen!
+        maxLife: 50,
+        color: '#facc15',
+      });
+    }
+
+    // Local ground blast hitbox
+    const blastBox: Hitbox = {
+      x: dir === 1 ? f.x + f.width : f.x - 220,
+      y: f.y + 5,
+      width: 220,
+      height: 70,
+      damage: PERSTEIN_SPARK_DAMAGE,
+      knockbackX: dir * 14,
+      knockbackY: -6,
+    };
+
+    const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+    for (const target of targets) {
+      if (this.checkCollision(blastBox, target)) {
+        this.applyHit(f, target, blastBox);
+        target.burnedTimer = 120;
+        this.addTextParticle(target.x + target.width / 2, target.y - 45, '🔥 MOLTEN METAL SHRAPNEL IGNITION!', '#facc15');
+      }
+    }
+  }
+
+  private executePersteinAwakenTouch(f: Fighter, opponent: Fighter) {
+    const dir = f.facing === 'right' ? 1 : -1;
+    const box: Hitbox = {
+      x: dir === 1 ? f.x + f.width - 10 : f.x - 200,
+      y: f.y + 5,
+      width: 210,
+      height: 65,
+      damage: PERSTEIN_FLESH_TEAR_DAMAGE,
+      knockbackX: dir * 12,
+      knockbackY: -6,
+    };
+
+    soundManager.playPersteinUltimate();
+    this.screenShake = 14;
+
+    const targets = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+    for (const target of targets) {
+      if (this.checkCollision(box, target)) {
+        this.applyHit(f, target, box);
+        target.persteinShredTimer = 300; // 5 seconds bleed
+        this.addShockwave(target.x + target.width / 2, target.y + target.height / 2, '#ef4444');
+        this.addTextParticle(target.x + target.width / 2, target.y - 50, '🩸 DIRECT TOUCH: FLESH TEAR (-260 HP + BLEED)', '#ef4444');
+      }
+    }
+  }
+
+  private executePersteinUltimateFrame(f: Fighter, opponent: Fighter) {
+    const timer = f.actionTimer || 0;
+
+    // Locate the locked primary victim
+    let victim: Fighter | undefined;
+    if (f.persteinUltVictimId) {
+      victim = this.getAllActiveFighters().find(t => t.id === f.persteinUltVictimId && t.hp > 0);
+    }
+    if (!victim) {
+      victim = (opponent && opponent.hp > 0) ? opponent : this.getAllActiveFighters().find(t => t.id !== f.id && t.team !== f.team && t.hp > 0);
+      if (victim) f.persteinUltVictimId = victim.id;
+    }
+
+    const dir = f.facing === 'right' ? 1 : -1;
+    const holdX = f.x + dir * 85;
+
+    // PHASE 1: NGIKET MUSUH (70m Heavy-Duty Drive Chain Snare & Binding) [Frames 130 down to 100]
+    if (timer >= 100) {
+      f.persteinUltPhase = 'snare';
+      if (victim) {
+        victim.action = 'grabbed';
+        victim.hitStun = 110;
+        victim.persteinChainBindTimer = 110;
+        victim.vx = 0;
+        victim.vy = 0;
+
+        if (timer === 126) {
+          soundManager.playPersteinChainWhip();
+          this.screenShake = 16;
+          this.addShockwave(victim.x + victim.width / 2, victim.y + victim.height / 2, '#38bdf8');
+          for (let s = 0; s < 12; s++) {
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 40 - 20), victim.y + victim.height / 2 + (Math.random() * 40 - 20), '#38bdf8');
+          }
+        }
+      }
+    }
+    // PHASE 2: DITARIK (Reeling In Bound Enemy With Hydraulic Torque) [Frames 99 down to 80]
+    else if (timer >= 80) {
+      f.persteinUltPhase = 'pull';
+      if (victim) {
+        victim.action = 'grabbed';
+        victim.hitStun = 85;
+        victim.persteinChainBindTimer = 85;
+        // Interpolate smoothly towards Perstein's grab focal point
+        victim.x += (holdX - victim.x) * 0.28;
+        victim.y += (f.y - victim.y) * 0.28;
+        victim.vx = 0;
+        victim.vy = 0;
+
+        if (timer === 95) {
+          soundManager.playPersteinChainShred();
+          this.screenShake = 14;
+          this.addShockwave(victim.x + victim.width / 2, victim.y + victim.height / 2, '#38bdf8');
+        }
+      }
+    }
+    // PHASE 3: DIPUTER (High-RPM Spinning Drive Chain Shredding) [Frames 79 down to 35]
+    else if (timer >= 35) {
+      f.persteinUltPhase = 'spin_shred';
+      if (victim) {
+        victim.action = 'grabbed';
+        victim.hitStun = 50;
+        victim.persteinChainBindTimer = 50;
+        victim.x = holdX;
+        victim.y = f.y - 10;
+        victim.vx = 0;
+        victim.vy = 0;
+
+        // Rapid multi-hit rotational shredding every 4 frames
+        if (timer % 4 === 0) {
+          soundManager.playPersteinChainShred();
+          this.screenShake = 12;
+          const shredDmg = 18;
+          victim.hp = Math.max(1, victim.hp - shredDmg);
+          victim.persteinShredTimer = 300;
+
+          // Collateral damage to other nearby enemies within rotary range
+          const collaterals = this.getAllActiveFighters().filter(t => t.id !== f.id && t.team !== f.team && t.id !== victim!.id && t.hp > 0);
+          for (const col of collaterals) {
+            if (Math.abs(col.x - holdX) < 110) {
+              col.hp = Math.max(1, col.hp - 10);
+              col.hitStun = 14;
+              col.vx = (col.x > holdX ? 1 : -1) * 6;
+            }
+          }
+
+          for (let s = 0; s < 6; s++) {
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 50 - 25), victim.y + victim.height / 2 + (Math.random() * 60 - 30), '#facc15');
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 50 - 25), victim.y + victim.height / 2 + (Math.random() * 60 - 30), '#ef4444');
+          }
+        }
+      }
+    }
+    // PHASE 4: DIREMET SAMPE MUSUHNYA KEKIKIS RANTAINYA AMPE ABIS (Constriction Crush & Final Cleave) [Frames 34 down to 0]
+    else {
+      f.persteinUltPhase = 'constrict_crush';
+      if (victim) {
+        victim.action = 'grabbed';
+        victim.hitStun = 35;
+        victim.persteinChainBindTimer = 35;
+        victim.x = holdX;
+        victim.y = f.y - 6;
+        victim.vx = 0;
+        victim.vy = 0;
+
+        // Progressive hydraulic constriction squeezer every 3 frames
+        if (timer > 12 && timer % 3 === 0) {
+          victim.hp = Math.max(1, victim.hp - 16);
+          this.screenShake = 15;
+          soundManager.playHit(true);
+          this.addSpark(victim.x + victim.width / 2, victim.y + victim.height / 2, '#38bdf8');
+          for (let s = 0; s < 4; s++) {
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 30 - 15), victim.y + victim.height / 2 + (Math.random() * 40 - 20), '#ef4444');
+          }
+        }
+
+        // CLIMAX: Final Grinding Constriction Snap & Cataclysmic Sunder at Frame 12!
+        if (timer === 12) {
+          soundManager.playPersteinUltimate();
+          this.screenShake = 32;
+
+          const finalBurst = 180;
+          victim.hp = Math.max(0, victim.hp - finalBurst);
+          victim.vx = dir * 26;
+          victim.vy = -13;
+          victim.hitStun = 60;
+          victim.isGrounded = false;
+          victim.persteinShredTimer = 360;
+          victim.persteinChainBindTimer = 0;
+
+          this.addShockwave(victim.x + victim.width / 2, victim.y + victim.height / 2, '#38bdf8');
+          this.addShockwave(victim.x + victim.width / 2, victim.y + victim.height / 2, '#ffffff');
+
+          for (let s = 0; s < 22; s++) {
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 80 - 40), victim.y + victim.height / 2 + (Math.random() * 80 - 40), '#38bdf8');
+            this.addSpark(victim.x + victim.width / 2 + (Math.random() * 80 - 40), victim.y + victim.height / 2 + (Math.random() * 80 - 40), '#ffffff');
+          }
+        }
+      }
+
+      if (timer <= 1) {
+        f.persteinUltPhase = 'complete';
+        f.action = 'idle';
+        f.persteinUltVictimId = null;
+        if (victim && victim.action === 'grabbed') {
+          victim.action = 'idle';
+        }
       }
     }
   }

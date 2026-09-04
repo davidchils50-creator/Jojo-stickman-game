@@ -1,7 +1,7 @@
 import React from 'react';
 import { Fighter, GameMode } from '../types';
 import { NetworkRole } from '../game/networkManager';
-import { Shield, Zap, Sparkles, Flame, Trophy, Activity, Skull, Users, Compass, Wifi, Radio, User } from 'lucide-react';
+import { Shield, Zap, Sparkles, Flame, Trophy, Activity, Skull, Users, Compass, Wifi, Radio, User, Sun, Thermometer, Bot } from 'lucide-react';
 
 interface FightHUDProps {
   player: Fighter;
@@ -39,26 +39,34 @@ export const FightHUD: React.FC<FightHUDProps> = ({
   const isMultiplayer = networkRole !== 'offline';
   const isClient = networkRole === 'client';
 
+  // Environmental The Sun Stand check
+  const sunUser = player.charId === 'arabian_fat' ? player : (ai.charId === 'arabian_fat' ? ai : (teammate?.charId === 'arabian_fat' ? teammate : null));
+  const sunTemp = sunUser ? Math.min(100, Math.max(0, sunUser.sunTemperature || 0)) : 0;
+
   return (
-    <div className="w-full shrink-0 select-none pointer-events-none z-20 px-2 sm:px-6 pt-1 pb-0.5 flex flex-col gap-0.5 overflow-hidden">
-      {/* Top Map & Mode & Multiplayer Network Quality pill */}
-      <div className="flex items-center justify-between w-full max-w-5xl mx-auto text-[10px] uppercase font-bold tracking-widest text-slate-400">
-        <div className="flex items-center gap-2">
-          {mapName && <span className="text-yellow-400/90 font-mono">📍 {mapName}</span>}
+    <div className="w-full shrink-0 select-none pointer-events-none z-20 px-1.5 sm:px-6 pt-0.5 pb-0.5 flex flex-col gap-0.5 overflow-hidden">
+      {/* Top Map & Mode & Mobile Landscape Hint */}
+      <div className="flex items-center justify-between w-full max-w-5xl mx-auto text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-400">
+        <div className="flex items-center gap-1.5">
+          {mapName && <span className="text-yellow-400/90 font-mono text-[9px] sm:text-[10px] truncate max-w-[120px] sm:max-w-none">📍 {mapName}</span>}
           {isSurvival && (
             <span className="text-emerald-400 font-bold hidden sm:inline">
-              🗺️ 2600px Arena (Camera Follow)
+              🗺️ 2600px Arena
             </span>
           )}
         </div>
 
-        {/* Center / Right Multiplayer Latency Badge */}
-        <div className="flex items-center gap-2">
+        {/* Mobile Landscape Hint & Network/Mode Badge */}
+        <div className="flex items-center gap-1.5">
+          <span className="sm:hidden text-[8px] text-amber-300 font-bold flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-950/80 border border-amber-500/40 animate-pulse">
+            📱 Landscape = Max View
+          </span>
+
           {isMultiplayer && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900/90 border border-cyan-500/40 text-cyan-300 font-mono text-[9px] shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+            <div className="flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-slate-900/90 border border-cyan-500/40 text-cyan-300 font-mono text-[8px] sm:text-[9px]">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-              <Wifi className="w-3 h-3 text-cyan-400" />
-              <span className="font-bold">{isClient ? '2P CLIENT' : '1P HOST'}</span>
+              <Wifi className="w-2.5 h-2.5 text-cyan-400" />
+              <span className="font-bold">{isClient ? '2P' : '1P'}</span>
               <span className="text-slate-400">|</span>
               <span className={pingMs < 50 ? 'text-emerald-400 font-black' : pingMs < 120 ? 'text-amber-400 font-black' : 'text-rose-400 font-black'}>
                 {pingMs > 0 ? `${pingMs}ms` : '<20ms'}
@@ -67,27 +75,76 @@ export const FightHUD: React.FC<FightHUDProps> = ({
           )}
 
           {mode === 'arcade' && !isMultiplayer && (
-            <span className="px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 flex items-center gap-1">
-              <Trophy className="w-3 h-3" /> ARCADE MATCH
+            <span className="px-1.5 py-0.2 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 flex items-center gap-1 text-[8px] sm:text-[10px]">
+              <Trophy className="w-2.5 h-2.5" /> ARCADE
+            </span>
+          )}
+          {mode === 'cpu_vs_cpu' && (
+            <span className="px-1.5 py-0.2 rounded bg-purple-500/20 border border-purple-400 text-purple-300 font-extrabold flex items-center gap-1 text-[8px] sm:text-[10px]">
+              <Bot className="w-2.5 h-2.5 text-purple-400" /> BOT VS BOT
             </span>
           )}
           {mode === 'training' && (
-            <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center gap-1">
-              <Activity className="w-3 h-3" /> TRAINING (INFINITE SP)
+            <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center gap-1 text-[8px] sm:text-[10px]">
+              <Activity className="w-2.5 h-2.5" /> TRAINING
             </span>
           )}
           {isBossMode && (
-            <span className="px-2 py-0.5 rounded bg-rose-950 border border-rose-500 text-rose-300 font-extrabold flex items-center gap-1 animate-pulse shadow-md">
-              <Skull className="w-3 h-3 text-rose-400" /> SUPREME BOSS RAID (RESPAWN ON)
+            <span className="px-1.5 py-0.2 rounded bg-rose-950 border border-rose-500 text-rose-300 font-extrabold flex items-center gap-1 text-[8px] sm:text-[10px] animate-pulse">
+              <Skull className="w-2.5 h-2.5 text-rose-400" /> BOSS RAID
             </span>
           )}
           {isSurvival && (
-            <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500 text-emerald-300 font-extrabold flex items-center gap-1 animate-pulse">
-              <Flame className="w-3 h-3 text-emerald-400" /> KILLS: {survivalStreak}
+            <span className="px-1.5 py-0.2 rounded bg-emerald-950 border border-emerald-500 text-emerald-300 font-extrabold flex items-center gap-1 text-[8px] sm:text-[10px] animate-pulse">
+              <Flame className="w-2.5 h-2.5 text-emerald-400" /> KILLS: {survivalStreak}
             </span>
           )}
         </div>
       </div>
+
+      {/* THE SUN: ENVIRONMENTAL TEMPERATURE GAUGE & MIRROR CAMOUFLAGE HUD */}
+      {sunUser && (
+        <div className="w-full max-w-5xl mx-auto my-0.5 px-2.5 py-1 rounded-md bg-gradient-to-r from-amber-950/80 via-orange-950/90 to-red-950/80 border border-amber-500/50 backdrop-blur-md shadow-[0_0_15px_rgba(245,158,11,0.3)] flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-amber-400 font-black text-xs font-serif tracking-wider uppercase">
+              <Sun className="w-4 h-4 text-amber-400 animate-spin" style={{ animationDuration: '8s' }} />
+              <span>THE SUN (太陽)</span>
+            </div>
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950/80 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-300">
+              <Thermometer className="w-3 h-3 text-orange-400" />
+              <span>{Math.round(sunTemp)}°C</span>
+            </div>
+            <div className="w-24 sm:w-36 h-2 bg-slate-950 rounded-full border border-amber-600/60 overflow-hidden p-[1px]">
+              <div 
+                className="h-full rounded-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 transition-all duration-150 shadow-[0_0_8px_rgba(239,68,68,0.8)]"
+                style={{ width: `${sunTemp}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 text-[9px] font-bold">
+            {sunTemp > 0 && (
+              <span className="text-orange-300/90 hidden sm:inline">
+                🔥 Burn DoT: {Math.max(1, Math.floor((sunTemp / 100) * 8))} DMG/s
+              </span>
+            )}
+            {sunTemp > 0 && (
+              <span className="text-amber-200/90 hidden sm:inline">
+                ⏳ Slow: -{Math.round((sunTemp / 100) * 55)}%
+              </span>
+            )}
+            {sunUser.mirrorObject && (
+              <span className={`px-1.5 py-0.5 rounded border text-[9px] font-black uppercase flex items-center gap-1 ${
+                sunUser.mirrorObject.isDestroyed
+                  ? 'bg-rose-950/90 border-rose-500 text-rose-300 animate-pulse'
+                  : 'bg-cyan-950/80 border-cyan-400 text-cyan-200'
+              }`}>
+                🪞 {sunUser.mirrorObject.isDestroyed ? 'MIRROR DESTROYED (EXPOSED!)' : `MIRROR: ${Math.ceil(sunUser.mirrorObject.hp)}/${sunUser.mirrorObject.maxHp} HP`}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Top Row: HP & Match Timer */}
       <div className="flex items-center justify-between gap-2 sm:gap-4 w-full max-w-5xl mx-auto">
@@ -97,7 +154,7 @@ export const FightHUD: React.FC<FightHUDProps> = ({
           <div className="flex items-center justify-between w-full mb-0.5">
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden">
-                {isMultiplayer && (
+                {isMultiplayer ? (
                   <span className={`px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider flex items-center gap-0.5 ${
                     !isClient 
                       ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-[0_0_8px_rgba(56,189,248,0.7)]' 
@@ -105,7 +162,11 @@ export const FightHUD: React.FC<FightHUDProps> = ({
                   }`}>
                     {!isClient ? '★ 1P (YOU)' : '1P (HOST)'}
                   </span>
-                )}
+                ) : mode === 'cpu_vs_cpu' ? (
+                  <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-800 flex items-center gap-0.5">
+                    <Bot className="w-2.5 h-2.5" /> P1 BOT
+                  </span>
+                ) : null}
                 <span className="text-xs sm:text-sm font-black tracking-wider text-yellow-400 uppercase font-serif truncate">
                   {player.name}
                 </span>
@@ -174,6 +235,31 @@ export const FightHUD: React.FC<FightHUDProps> = ({
             </span>
           </div>
 
+          {/* MICHAEL JUNISTER DEDICATED KINETIC MOMENTUM METER */}
+          {player.charId === 'michael' && (
+            <div className="w-full mt-0.5 px-1.5 py-0.5 rounded bg-slate-950/90 border border-amber-500/50 flex flex-col gap-0.5 shadow-[0_0_12px_rgba(250,204,21,0.25)]">
+              <div className="flex items-center justify-between text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider">
+                <span className="flex items-center gap-1 text-amber-300 font-serif truncate max-w-[150px] sm:max-w-none">
+                  <Zap className="w-2.5 h-2.5 text-yellow-400 animate-pulse fill-yellow-400 shrink-0" />
+                  KINETIC (HAT PRICE)
+                </span>
+                <span className="font-mono text-yellow-300 font-bold">
+                  {Math.round(player.michaelKineticMeter || 0)}% ({player.michaelKineticStacks || 0}/5)
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-900 rounded-full border border-amber-600/50 p-[1px] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-500 via-yellow-400 to-yellow-100 transition-all duration-100 shadow-[0_0_10px_rgba(250,204,21,0.8)]"
+                  style={{ width: `${Math.min(100, Math.max(0, player.michaelKineticMeter || 0))}%` }}
+                />
+              </div>
+              <div className="hidden sm:flex items-center justify-between text-[7.5px] font-bold text-amber-400/80">
+                <span>⚡ ABSORBS RUN & IMPACT MOMENTUM</span>
+                <span>+{Math.round((player.michaelKineticMeter || 0) * 0.35)}% IMPACT POWER</span>
+              </div>
+            </div>
+          )}
+
           {/* Teammate/Partner Compact Status Bar */}
           {teammate && (
             <div className="w-full mt-1.5 pt-1 border-t border-slate-800/40 flex flex-col gap-0.5">
@@ -192,11 +278,11 @@ export const FightHUD: React.FC<FightHUDProps> = ({
         </div>
 
         {/* CENTER MATCH TIMER */}
-        <div className="flex flex-col items-center justify-center px-2">
-          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-950/90 border-2 flex items-center justify-center shadow-lg ${
+        <div className="flex flex-col items-center justify-center px-1 shrink-0">
+          <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-slate-950/90 border-2 flex items-center justify-center shadow-lg ${
             isBossMode ? 'border-rose-500 shadow-rose-500/30' : 'border-yellow-500/80 shadow-yellow-500/30'
           }`}>
-            <span className={`text-xl sm:text-2xl font-black font-mono tracking-tighter ${
+            <span className={`text-base sm:text-2xl font-black font-mono tracking-tighter ${
               mode === 'training' 
                 ? 'text-cyan-400' 
                 : isBossMode
@@ -208,7 +294,7 @@ export const FightHUD: React.FC<FightHUDProps> = ({
               {mode === 'training' ? '∞' : matchTime}
             </span>
           </div>
-          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+          <span className="text-[8px] sm:text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 hidden sm:inline">
             {isMultiplayer ? '1P VS 2P' : (isBossMode ? 'BOSS RAID' : (isSurvival ? `KILLS: ${survivalStreak}` : 'ROUND 1'))}
           </span>
         </div>
@@ -221,7 +307,7 @@ export const FightHUD: React.FC<FightHUDProps> = ({
             </span>
             <div className="flex flex-col items-end min-w-0">
               <div className="flex items-center gap-1.5 whitespace-nowrap overflow-hidden">
-                {isMultiplayer && (
+                {isMultiplayer ? (
                   <span className={`px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider flex items-center gap-0.5 ${
                     isClient 
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.7)]' 
@@ -229,7 +315,11 @@ export const FightHUD: React.FC<FightHUDProps> = ({
                   }`}>
                     {isClient ? '★ 2P (YOU)' : '2P (LAWAN)'}
                   </span>
-                )}
+                ) : mode === 'cpu_vs_cpu' ? (
+                  <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-0.5">
+                    <Bot className="w-2.5 h-2.5" /> P2 BOT
+                  </span>
+                ) : null}
                 {ai.isSwordEquipped && (
                   <span className="shrink-0 px-1 py-0.2 rounded bg-gradient-to-r from-sky-500 to-indigo-500 text-[8px] sm:text-[9px] font-black text-white uppercase tracking-tighter flex items-center gap-0.5 shadow-[0_0_8px_rgba(56,189,248,0.7)] animate-pulse">
                     ⚔️ PLUCK
@@ -305,6 +395,27 @@ export const FightHUD: React.FC<FightHUDProps> = ({
               />
             </div>
           </div>
+
+          {/* AI MICHAEL JUNISTER KINETIC MOMENTUM METER */}
+          {ai.charId === 'michael' && (
+            <div className="w-full mt-1 px-2 py-1 rounded bg-slate-950/90 border border-amber-500/50 flex flex-col gap-0.5 shadow-[0_0_12px_rgba(250,204,21,0.25)]">
+              <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-black uppercase tracking-wider">
+                <span className="font-mono text-yellow-300 font-bold">
+                  {Math.round(ai.michaelKineticMeter || 0)}% (STACK {ai.michaelKineticStacks || 0}/5)
+                </span>
+                <span className="flex items-center gap-1 text-amber-300 font-serif">
+                  KINETIC MOMENTUM (HAT PRICE)
+                  <Zap className="w-3 h-3 text-yellow-400 animate-pulse fill-yellow-400" />
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-900 rounded-full border border-amber-600/50 p-[1px] overflow-hidden flex justify-end">
+                <div
+                  className="h-full rounded-full bg-gradient-to-l from-amber-500 via-yellow-400 to-yellow-100 transition-all duration-100 shadow-[0_0_10px_rgba(250,204,21,0.8)]"
+                  style={{ width: `${Math.min(100, Math.max(0, ai.michaelKineticMeter || 0))}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

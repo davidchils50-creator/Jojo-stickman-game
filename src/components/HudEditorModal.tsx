@@ -78,7 +78,15 @@ const CHARACTER_BUTTONS: Record<string, string[]> = {
   silver_chariot: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch'],
   jonathan: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch'],
   joseph_young: ['jump', 'left', 'right', 'crouch', 'pose', 'skill1', 'skill2', 'skill3', 'skill4', 'barrage', 'punch'],
-  joseph_old: ['jump', 'left', 'right', 'crouch', 'pose', 'skill1', 'skill2', 'skill3', 'barrage', 'punch']
+  joseph_old: ['jump', 'left', 'right', 'crouch', 'pose', 'skill1', 'skill2', 'skill3', 'barrage', 'punch'],
+  pucci: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'ultimate', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch'],
+  gappy: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch'],
+  funny_valentine: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'ultimate', 'skill1', 'skill2', 'skill3', 'skill4', 'barrage', 'punch'],
+  tooru: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'skill1', 'skill2', 'skill3', 'skill4', 'barrage', 'punch'],
+  dipez: ['jump', 'left', 'right', 'crouch', 'pose', 'ultimate', 'skill1', 'skill2', 'skill3', 'barrage', 'punch'],
+  arabian_fat: ['jump', 'left', 'right', 'crouch', 'pose', 'ultimate', 'skill1', 'skill2', 'skill3', 'barrage', 'punch'],
+  michael: ['jump', 'left', 'right', 'crouch', 'pose', 'ultimate', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch'],
+  perstein: ['jump', 'left', 'right', 'crouch', 'pose', 'toggleStand', 'ultimate', 'skill1', 'skill2', 'skill3', 'skill4', 'skill5', 'barrage', 'punch']
 };
 
 export const HudEditorModal: React.FC<HudEditorModalProps> = ({ isOpen, onClose, initialCharId = 'jotaro' }) => {

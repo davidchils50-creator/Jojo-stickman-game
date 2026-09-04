@@ -978,6 +978,70 @@ export const CutsceneStageCanvas: React.FC<CutsceneStageCanvasProps> = ({
         }
       }
     }
+    else if (charId === 'michael') {
+      // 1. Fair Handsome Face (Not dark / black)
+      ctx.fillStyle = '#fed7aa';
+      ctx.beginPath();
+      ctx.arc(0, 0, headRadius - 0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sharp Anime Jawline & Athletic Smirk
+      ctx.strokeStyle = '#c2410c';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(-1 * dir, 4);
+      ctx.quadraticCurveTo(2 * dir, 5, 5 * dir, 3);
+      ctx.stroke();
+
+      // Piercing Golden Irises & Eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(1.5 * dir, -2.5, 4.5 * dir, 3);
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(3.5 * dir, -1, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#0f172a'; // Sharp Brow
+      ctx.fillRect(1 * dir, -4, 5.5 * dir, 1.2);
+
+      // 2. Spiky Obsidian Hair with Golden Highlights
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.moveTo(-headRadius * dir, -2);
+      ctx.lineTo(-14 * dir, -12);
+      ctx.lineTo(-6 * dir, -10);
+      ctx.lineTo(-8 * dir, -18);
+      ctx.lineTo(0, -12);
+      ctx.lineTo(6 * dir, -20);
+      ctx.lineTo(10 * dir, -10);
+      ctx.lineTo(14 * dir, -14);
+      ctx.lineTo(12 * dir, -2);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gold Hair Highlights
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(6 * dir, -20);
+      ctx.lineTo(8 * dir, -15);
+      ctx.lineTo(4 * dir, -15);
+      ctx.closePath();
+      ctx.fill();
+
+      // 3. Golden Athletic Headband with Emblem
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(-headRadius - 1, -headRadius - 1, (headRadius + 1) * 2, 3.5);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(dir * 2 - 2, -headRadius - 1.5, 4, 4.5);
+
+      // Fluttering Ribbon Tails
+      const ribbonWave = Math.sin(time * 0.25) * 4;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-headRadius * dir, -headRadius);
+      ctx.bezierCurveTo(-14 * dir, -headRadius + ribbonWave, -20 * dir, -headRadius + 6 - ribbonWave, -26 * dir, -headRadius + 2 + ribbonWave);
+      ctx.stroke();
+    }
   };
 
   // --- DRAW BODY WEAR & PROPS ---
@@ -1230,6 +1294,60 @@ export const CutsceneStageCanvas: React.FC<CutsceneStageCanvasProps> = ({
       ctx.fillStyle = 'rgba(220, 38, 38, 0.35)';
       ctx.fillRect(-18 * dir, neckY + 4 + flagWave, 16 * dir, 20);
       ctx.restore();
+    }
+    else if (charId === 'michael') {
+      // 1. Dark Sleeveless Martial Gi with Golden Trim
+      ctx.fillStyle = '#090d16';
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-6, neckY);
+      ctx.lineTo(6, neckY);
+      ctx.lineTo(10, hipY);
+      ctx.lineTo(-10, hipY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Gold Chest Emblem (Kinetic Diamond)
+      ctx.fillStyle = '#facc15';
+      const midY = (neckY + hipY) * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, midY - 3.5);
+      ctx.lineTo(3.5, midY);
+      ctx.lineTo(0, midY + 3.5);
+      ctx.lineTo(-3.5, midY);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. SIGNATURE FLUTTERING SELENDANG (Flowing Silk Shawl / Scarf)
+      const selendangWave = Math.sin(time * 0.2) * 6;
+      ctx.strokeStyle = '#047857'; // Deep emerald silk base
+      ctx.lineWidth = 4.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      // Selendang draped around neck
+      ctx.moveTo(-7 * dir, neckY + 1);
+      ctx.quadraticCurveTo(0, neckY + 7, 7 * dir, neckY + 1);
+      ctx.stroke();
+
+      // Flowing Selendang Tail (billowing back into the wind)
+      ctx.beginPath();
+      ctx.moveTo(-4 * dir, neckY + 3);
+      ctx.bezierCurveTo(-12 * dir, neckY + 8 + selendangWave, -22 * dir, neckY + 4 - selendangWave, -34 * dir, neckY + 18 + selendangWave);
+      ctx.stroke();
+
+      // Gold embroidered border along the selendang
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-4 * dir, neckY + 1);
+      ctx.bezierCurveTo(-12 * dir, neckY + 6 + selendangWave, -22 * dir, neckY + 2 - selendangWave, -34 * dir, neckY + 16 + selendangWave);
+      ctx.stroke();
+
+      // Gold Martial Belt
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-7, hipY - 2, 14, 3);
     }
   };
 
@@ -1660,6 +1778,48 @@ export const CutsceneStageCanvas: React.FC<CutsceneStageCanvasProps> = ({
         ctx.beginPath();
         ctx.arc(px, py, 2, 0, Math.PI * 2);
         ctx.fill();
+      }
+    }
+    else if (charId === 'michael') {
+      // GHOST: HAT PRICE (Pure Golden Kinetic Phantom - NO HAT!)
+      // 1. Ethereal Fiery Kinetic Aura Spikes (Flame Crest)
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.moveTo(-dir * 6, headY - headRadius);
+      ctx.lineTo(-dir * 11, headY - headRadius - 13);
+      ctx.lineTo(-dir * 4, headY - headRadius - 7);
+      ctx.lineTo(0, headY - headRadius - 18);
+      ctx.lineTo(dir * 4, headY - headRadius - 8);
+      ctx.lineTo(dir * 11, headY - headRadius - 14);
+      ctx.lineTo(dir * 6, headY - headRadius);
+      ctx.closePath();
+      ctx.fill();
+
+      // 2. Blazing White-Gold Phantom Eyes
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#facc15';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.arc(4 * dir, headY - 1, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // 3. Concentric Kinetic Shock Rings around Hat Price
+      ctx.strokeStyle = 'rgba(250, 204, 21, 0.6)';
+      ctx.lineWidth = 1.5;
+      const ringR = (time * 18) % 36;
+      ctx.beginPath();
+      ctx.arc(0, headY, ringR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 4. Flurry of Kinetic Golden Palms
+      ctx.strokeStyle = 'rgba(254, 240, 138, 0.5)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i++) {
+        const pOff = Math.sin(time * 0.4 + i * 2) * 8;
+        ctx.beginPath();
+        ctx.arc(armRX + dir * (10 + i * 8), armRY + pOff, 5, 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
 

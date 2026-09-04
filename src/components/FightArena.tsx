@@ -8,7 +8,7 @@ import { TouchControls } from './TouchControls';
 import { MatchIntroCutscene } from './MatchIntroCutscene';
 import { InputState, MatchConfig, Fighter } from '../types';
 import { soundManager } from '../game/audio';
-import { Trophy, Skull, RotateCcw, Home, ArrowLeft, Settings2, Sparkles, Zap, Flame, Clock, MessageSquareQuote } from 'lucide-react';
+import { Trophy, Skull, RotateCcw, Home, ArrowLeft, Settings2, Sparkles, Zap, Flame, Clock, MessageSquareQuote, Bot } from 'lucide-react';
 
 interface FightArenaProps {
   matchConfig: MatchConfig;
@@ -348,6 +348,7 @@ export const FightArena: React.FC<FightArenaProps> = ({
         // Render fighters, stands, projectiles, particles, and Time Stop overlays
         if (renderer) {
           renderer.activeGravityAxis = engine.activeGravityAxis;
+          renderer.acidPools = engine.acidPools;
           renderer.isMultiplayer = isMultiplayer;
           renderer.localPlayerId = isClient ? 'ai' : 'player';
           const arenaWidth = engine.getArenaWidth();
@@ -361,7 +362,8 @@ export const FightArena: React.FC<FightArenaProps> = ({
             matchConfig.map,
             arenaWidth,
             engine.teammate,
-            engine.vampires
+            engine.vampires,
+            engine.acidPools
           );
         }
         ctx.restore();
@@ -471,6 +473,9 @@ export const FightArena: React.FC<FightArenaProps> = ({
   const isGappy = localFighter.charId === 'gappy';
   const isValentine = localFighter.charId === 'funny_valentine';
   const isDipez = localFighter.charId === 'dipez';
+  const isArabianFat = localFighter.charId === 'arabian_fat';
+  const isMichael = localFighter.charId === 'michael';
+  const isPerstein = localFighter.charId === 'perstein';
   const pucciForm = localFighter.pucciForm || 'whitesnake';
 
   // Stop Tooru BGM & all sounds on match finish or arena unmount
@@ -576,8 +581,8 @@ export const FightArena: React.FC<FightArenaProps> = ({
       />
 
       {/* Center 2D Game Arena Canvas */}
-      <div className="relative w-full flex-1 min-h-0 max-w-5xl flex items-center justify-center px-2 py-0.5 overflow-hidden">
-        <div className="relative w-full h-full max-h-[46vh] sm:max-h-[54vh] aspect-[16/9] rounded-xl overflow-hidden border-2 border-purple-900/60 shadow-[0_0_40px_rgba(147,51,234,0.2)] bg-black transform-gpu">
+      <div className="relative w-full flex-1 min-h-[160px] max-w-5xl flex items-center justify-center px-1 sm:px-2 py-0.5 overflow-hidden">
+        <div className="relative w-full h-full max-h-[60vh] sm:max-h-[68vh] aspect-[16/9] rounded-xl overflow-hidden border-2 border-purple-900/60 shadow-[0_0_40px_rgba(147,51,234,0.2)] bg-black transform-gpu flex items-center justify-center">
           
           <canvas
             ref={canvasRef}
@@ -716,6 +721,40 @@ export const FightArena: React.FC<FightArenaProps> = ({
                   </span>,
                   <span key="dip-p" className="text-white font-bold">P/Y: Evolution Gamble (50%) / Star Maker</span>
                 );
+              } else if (isArabianFat) {
+                items.push(
+                  <span key="af-u" className="text-amber-300 font-bold">U: Heat Ray Snipe</span>,
+                  <span key="af-i" className="text-orange-300 font-bold">I: Desert Mirage (Invert Controls)</span>,
+                  <span key="af-o" className="text-red-400 font-bold">O: Solar Bombardment</span>,
+                  <span key="af-p" className="text-yellow-400 font-bold">P: Supernova Heatwave</span>,
+                  <span key="af-j" className="text-emerald-300 font-bold">J: Mirror Camouflage</span>
+                );
+              } else if (isMichael) {
+                const isOverdrive = (localFighter.michaelOverdriveTimer || 0) > 0;
+                items.push(
+                  <span key="mic-u" className="text-yellow-300 font-bold">U: Golden Palm Thrust</span>,
+                  <span key="mic-i" className="text-amber-200 font-bold">
+                    {localFighter.michaelCounterActive ? 'I: COUNTER PRIMED!' : 'I: Flash Step Counter'}
+                  </span>,
+                  <span key="mic-o" className="text-yellow-400 font-bold">O: Golden Axe Kick</span>,
+                  <span key="mic-p" className={`font-bold ${isOverdrive ? 'text-amber-300 animate-pulse' : 'text-yellow-200'}`}>
+                    P: Overdrive {isOverdrive ? `(${Math.ceil((localFighter.michaelOverdriveTimer || 0) / 60)}s)` : ''}
+                  </span>,
+                  <span key="mic-l" className="text-orange-300 font-bold">L: Gold Gale Rush</span>,
+                  <span key="mic-y" className="text-amber-400 font-bold">Y: MAXIMUM PRICE</span>
+                );
+              } else if (isPerstein) {
+                const isDeflect = (localFighter.persteinDeflectionTimer || 0) > 0;
+                items.push(
+                  <span key="per-u" className="text-sky-300 font-bold">U: 70m Drive Chain Snare (Screen Reach)</span>,
+                  <span key="per-i" className="text-slate-200 font-bold">I: High-RPM Chain Shred</span>,
+                  <span key="per-o" className="text-yellow-300 font-bold">O: Metal Spark Blast</span>,
+                  <span key="per-p" className={`font-bold ${isDeflect ? 'text-sky-300 animate-pulse' : 'text-cyan-300'}`}>
+                    P: Chain Deflection {isDeflect ? `(${Math.ceil((localFighter.persteinDeflectionTimer || 0) / 60)}s)` : '(Awaken 2)'}
+                  </span>,
+                  <span key="per-h" className="text-red-400 font-bold">H: Direct Flesh Tear (Awaken 1)</span>,
+                  <span key="per-y" className="text-sky-100 font-bold">Y: Silence After The Storm</span>
+                );
               } else {
                 items.push(
                   <span key="generic-spec" className="text-slate-400 italic">Special Moves & Barrage Ready</span>
@@ -737,7 +776,23 @@ export const FightArena: React.FC<FightArenaProps> = ({
             <div className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center z-40 p-4 animate-in fade-in duration-300">
               
               <div className="flex flex-col items-center text-center max-w-md">
-                {isLocalWinner ? (
+                {matchConfig.mode === 'cpu_vs_cpu' ? (
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-purple-500/20 border-2 border-purple-400 flex items-center justify-center mb-3 shadow-[0_0_25px_rgba(168,85,247,0.5)] animate-pulse">
+                      <Bot className="w-8 h-8 text-purple-400" />
+                    </div>
+                    <h2 className="text-3xl sm:text-5xl font-black italic tracking-tighter text-purple-300 font-serif uppercase drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)]">
+                      {hudState.winner === 'player'
+                        ? `P1 ${matchConfig.playerChar.userName} WINS!`
+                        : hudState.winner === 'ai'
+                        ? `P2 ${matchConfig.enemyChar.userName} WINS!`
+                        : 'TIME OVER - DRAW!'}
+                    </h2>
+                    <p className="text-xs uppercase tracking-[0.3em] text-purple-400 font-bold mt-2">
+                      🤖 AUTOMATED CPU MATCH FINISHED
+                    </p>
+                  </div>
+                ) : isLocalWinner ? (
                   <div className="flex flex-col items-center">
                     <div className="w-16 h-16 rounded-full bg-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center mb-3 shadow-[0_0_25px_rgba(234,179,8,0.5)] animate-bounce">
                       <Trophy className="w-8 h-8 text-yellow-400" />

@@ -1,4 +1,5 @@
 import { getSupabaseClient, SupabaseRoomRow } from './supabaseClient';
+import { getApiUrl, safeFetchJson } from './api';
 
 export interface PublicRoomInfo {
   id: string;
@@ -10,7 +11,7 @@ export interface PublicRoomInfo {
   updated_at?: number;
 }
 
-const PUBLIC_TOPIC = 'jojo_stickman_public_rooms_v2';
+const PUBLIC_TOPIC = 'jojo_stickman_public_rooms_v3';
 const NTFY_PUB_URL = `https://ntfy.sh/${PUBLIC_TOPIC}`;
 
 // In-memory cache & BroadcastChannel for same-device multi-tab fast sync
@@ -19,7 +20,7 @@ let memoryRoomsMap = new Map<string, PublicRoomInfo>();
 let broadcastChannel: BroadcastChannel | null = null;
 try {
   if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-    broadcastChannel = new BroadcastChannel('jojo_public_rooms_channel');
+    broadcastChannel = new BroadcastChannel('jojo_public_rooms_channel_v3');
     broadcastChannel.onmessage = (event) => {
       if (event.data && event.data.type === 'room_update') {
         const room = event.data.room as PublicRoomInfo;
@@ -36,15 +37,16 @@ try {
 }
 
 /**
- * Publish a new or updated room to the global public directory (ntfy + Supabase + BroadcastChannel)
+ * Publish a new or updated room to the global public directory (Server API + ntfy + Supabase + BroadcastChannel)
  */
 export async function publishPublicRoom(room: PublicRoomInfo): Promise<void> {
   const roomPayload: PublicRoomInfo = {
     ...room,
+    id: room.id.toUpperCase(),
     updated_at: Date.now(),
   };
 
-  memoryRoomsMap.set(room.id, roomPayload);
+  memoryRoomsMap.set(roomPayload.id, roomPayload);
 
   // 1. Same-device / tab broadcast
   if (broadcastChannel) {
@@ -55,26 +57,53 @@ export async function publishPublicRoom(room: PublicRoomInfo): Promise<void> {
     }
   }
 
-  // 2. Global public ntfy relay (works across 2 different phones on different networks)
+  // 2. Server API (if full-stack)
   try {
-    fetch(NTFY_PUB_URL, {
+    const apiUrl = getApiUrl('/api/rooms/publish');
+    fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(roomPayload),
-    }).catch(err => console.warn("Notice: ntfy publish warning:", err));
+    }).catch(() => {});
+  } catch (e) {
+    // ignore
+  }
+
+  // 3. Global public ntfy relay (works across 2 different phones on cellular or separate WiFi)
+  try {
+    // Post as structured ntfy message
+    fetch(NTFY_PUB_URL, {
+      method: 'POST',
+      headers: {
+        'Title': `Jojo Room ${roomPayload.id}`,
+        'Tags': 'game,jojo',
+      },
+      body: JSON.stringify(roomPayload),
+    }).catch(() => {});
+
+    // Secondary JSON formatted post
+    fetch('https://ntfy.sh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        topic: PUBLIC_TOPIC,
+        message: JSON.stringify(roomPayload),
+        title: `Room ${roomPayload.id}`,
+      }),
+    }).catch(() => {});
   } catch (e) {
     console.warn("Error publishing to ntfy signaling:", e);
   }
 
-  // 3. Supabase fallback database (if configured/reachable)
+  // 4. Supabase fallback database (if configured/reachable)
   try {
     const supabase = getSupabaseClient();
     supabase.from('rooms').upsert({
-      id: room.id,
-      room_name: room.room_name,
-      host_char: room.host_char,
-      status: room.status,
-      created_at: room.created_at,
+      id: roomPayload.id,
+      room_name: roomPayload.room_name,
+      host_char: roomPayload.host_char,
+      status: roomPayload.status,
+      created_at: roomPayload.created_at,
     }).then(({ error }) => {
       if (error) console.warn("Supabase upsert public room notice:", error.message);
     });
@@ -88,8 +117,9 @@ export async function publishPublicRoom(room: PublicRoomInfo): Promise<void> {
  */
 export async function unpublishPublicRoom(roomId: string): Promise<void> {
   if (!roomId) return;
+  const cleanId = roomId.trim().toUpperCase();
   const closedRoom: PublicRoomInfo = {
-    id: roomId,
+    id: cleanId,
     room_name: '',
     host_char: 'jotaro',
     status: 'closed',
@@ -98,7 +128,7 @@ export async function unpublishPublicRoom(roomId: string): Promise<void> {
     updated_at: Date.now(),
   };
 
-  memoryRoomsMap.delete(roomId);
+  memoryRoomsMap.delete(cleanId);
 
   if (broadcastChannel) {
     try {
@@ -109,63 +139,111 @@ export async function unpublishPublicRoom(roomId: string): Promise<void> {
   }
 
   try {
-    fetch(NTFY_PUB_URL, {
+    const apiUrl = getApiUrl('/api/rooms/unpublish');
+    fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: cleanId }),
+    }).catch(() => {});
+  } catch (e) {}
+
+  try {
+    fetch(NTFY_PUB_URL, {
+      method: 'POST',
       body: JSON.stringify(closedRoom),
     }).catch(() => {});
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 
   try {
     const supabase = getSupabaseClient();
-    supabase.from('rooms').delete().eq('id', roomId).then(() => {});
-  } catch (e) {
-    // ignore
-  }
+    supabase.from('rooms').delete().eq('id', cleanId).then(() => {});
+  } catch (e) {}
 }
 
 /**
- * Fetch all active public rooms from global relay (ntfy) + Supabase + local cache
+ * Fetch all active public rooms from Server API + global relay (ntfy) + Supabase + local cache
  */
 export async function fetchActivePublicRooms(): Promise<PublicRoomInfo[]> {
   const roomsMap = new Map<string, PublicRoomInfo>();
-
-  // Load from local memory cache first
   const now = Date.now();
-  const ROOM_TTL_MS = 30 * 1000; // 30 seconds active TTL for heartbeats
+  const ROOM_TTL_MS = 45 * 1000; // 45 seconds active TTL for heartbeats
 
+  // 1. Load from local memory cache first
   for (const [id, room] of memoryRoomsMap.entries()) {
     if (room.status === 'waiting' && room.updated_at && (now - room.updated_at < ROOM_TTL_MS)) {
       roomsMap.set(id, room);
     }
   }
 
-  // Fetch from global public relay (ntfy)
+  // 2. Fetch from Server API
   try {
-    const ntfyRes = await fetch(`${NTFY_PUB_URL}/json?poll=1&since=1m`, { signal: AbortSignal.timeout(3500) });
+    const apiUrl = getApiUrl('/api/rooms');
+    const res = await safeFetchJson<{ rooms: PublicRoomInfo[] }>(apiUrl);
+    if (res && Array.isArray(res.rooms)) {
+      for (const r of res.rooms) {
+        if (r && r.id && r.status === 'waiting') {
+          roomsMap.set(r.id.toUpperCase(), {
+            ...r,
+            id: r.id.toUpperCase(),
+            updated_at: r.updated_at || Date.now(),
+          });
+          memoryRoomsMap.set(r.id.toUpperCase(), r);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // 3. Fetch from global public relay (ntfy)
+  try {
+    const ntfyRes = await fetch(`${NTFY_PUB_URL}/json?poll=1&since=5m`, { signal: AbortSignal.timeout(3500) });
     if (ntfyRes.ok) {
       const text = await ntfyRes.text();
       const lines = text.trim().split('\n');
       for (const line of lines) {
-        if (!line) continue;
+        if (!line || !line.trim()) continue;
         try {
           const item = JSON.parse(line);
+          let roomData: PublicRoomInfo | null = null;
+
           if (item && item.message) {
-            const roomData = JSON.parse(item.message) as PublicRoomInfo;
-            if (roomData && roomData.id) {
-              const itemAge = roomData.updated_at ? (now - roomData.updated_at) : 0;
-              if (roomData.status === 'closed') {
-                roomsMap.delete(roomData.id);
-                memoryRoomsMap.delete(roomData.id);
-              } else if (roomData.status === 'waiting' && itemAge < ROOM_TTL_MS) {
-                // Keep newest update
-                const existing = roomsMap.get(roomData.id);
-                if (!existing || (roomData.updated_at || 0) >= (existing.updated_at || 0)) {
-                  roomsMap.set(roomData.id, roomData);
-                  memoryRoomsMap.set(roomData.id, roomData);
-                }
+            if (typeof item.message === 'string') {
+              try {
+                roomData = JSON.parse(item.message);
+              } catch {
+                // Not JSON string
+              }
+            } else if (typeof item.message === 'object') {
+              roomData = item.message;
+            }
+          }
+
+          if (!roomData && item && item.id && (item.host_char || item.room_name)) {
+            roomData = item;
+          }
+
+          if (roomData && roomData.id) {
+            const cleanId = String(roomData.id).trim().toUpperCase();
+            const itemAge = roomData.updated_at ? (now - roomData.updated_at) : 0;
+
+            if (roomData.status === 'closed') {
+              roomsMap.delete(cleanId);
+              memoryRoomsMap.delete(cleanId);
+            } else if (roomData.status === 'waiting' && itemAge < ROOM_TTL_MS) {
+              const existing = roomsMap.get(cleanId);
+              if (!existing || (roomData.updated_at || 0) >= (existing.updated_at || 0)) {
+                const normalized: PublicRoomInfo = {
+                  id: cleanId,
+                  room_name: roomData.room_name || `Room ${cleanId}`,
+                  host_char: roomData.host_char || 'jotaro',
+                  status: 'waiting',
+                  connection_mode: roomData.connection_mode || 'peerjs',
+                  created_at: roomData.created_at || new Date().toISOString(),
+                  updated_at: roomData.updated_at || now,
+                };
+                roomsMap.set(cleanId, normalized);
+                memoryRoomsMap.set(cleanId, normalized);
               }
             }
           }
@@ -178,7 +256,7 @@ export async function fetchActivePublicRooms(): Promise<PublicRoomInfo[]> {
     console.warn("Global ntfy room poll notice:", e);
   }
 
-  // Fetch from Supabase as secondary source
+  // 4. Fetch from Supabase as secondary source
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
@@ -191,10 +269,11 @@ export async function fetchActivePublicRooms(): Promise<PublicRoomInfo[]> {
     if (!error && data && Array.isArray(data)) {
       for (const row of data as SupabaseRoomRow[]) {
         if (row.id && row.status === 'waiting') {
-          if (!roomsMap.has(row.id)) {
-            roomsMap.set(row.id, {
-              id: row.id,
-              room_name: row.room_name || `Room ${row.id}`,
+          const cleanId = String(row.id).trim().toUpperCase();
+          if (!roomsMap.has(cleanId)) {
+            roomsMap.set(cleanId, {
+              id: cleanId,
+              room_name: row.room_name || `Room ${cleanId}`,
               host_char: row.host_char || 'jotaro',
               status: 'waiting',
               connection_mode: 'supabase',

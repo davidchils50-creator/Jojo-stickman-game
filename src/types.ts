@@ -138,11 +138,32 @@ export type FighterAction =
   | 'dipez_invisibility'
   | 'dipez_map_laser'
   | 'dipez_evolution_startup'
-  | 'dipez_star_maker';
+  | 'dipez_star_maker'
+  // Arabian Fat & The Sun (Part 3: Stardust Crusaders)
+  | 'sun_laser_strike'
+  | 'sun_mirage_trap'
+  | 'sun_bombardment'
+  | 'sun_supernova'
+  | 'sun_exposed_panic'
+  // Michael Junister (Ghost: Hat Price - Non-Humanoid Golden Aura Limbs & Kinetic Combat)
+  | 'michael_palm_thrust'
+  | 'michael_counter_stance'
+  | 'michael_counter_kick'
+  | 'michael_axe_kick'
+  | 'michael_overdrive'
+  | 'michael_kinetic_barrage'
+  | 'michael_ultimate'
+  // Wally Wable / Perstein (Ghost: Wable the Metal Cutter - 70m Drive Chains & Absolute Deflection)
+  | 'perstein_chain_whip'
+  | 'perstein_chain_bind_shred'
+  | 'perstein_spark_ignition'
+  | 'perstein_awaken_deflection'
+  | 'perstein_awaken_touch'
+  | 'perstein_ultimate';
 
-export type AuraColor = 'purple' | 'gold' | 'crimson' | 'cyan' | 'grey' | 'emerald' | 'silver' | 'amber' | 'lime' | 'calamity' | 'heaven' | 'dimensional';
+export type AuraColor = 'purple' | 'gold' | 'crimson' | 'cyan' | 'grey' | 'emerald' | 'silver' | 'amber' | 'lime' | 'calamity' | 'heaven' | 'dimensional' | 'metal';
 
-export type GameMode = 'arcade' | 'training' | 'survival' | 'team_boss' | 'team_survival';
+export type GameMode = 'arcade' | 'training' | 'survival' | 'team_boss' | 'team_survival' | 'cpu_vs_cpu';
 
 export type BossType = 'boss_dio' | 'boss_diavolo' | 'boss_tooru' | 'boss_pucci';
 
@@ -237,7 +258,7 @@ export interface Hurtbox {
 export interface Projectile {
   id: number;
   ownerId: string;
-  type: 'knife' | 'space_ripper' | 'space_ripper_beam' | 'road_roller' | 'sendo_wave' | 'clacker_volley' | 'tommy_bullet' | 'hermit_vine_grab' | 'blood_blind' | 'rapier_blade' | 'josuke_shard' | 'josuke_bearing' | 'rock_insect' | 'calamity_debris' | 'calamity_car' | 'calamity_raindrop' | 'calamity_meteor' | 'calamity_lightning' | 'pucci_bullet' | 'pucci_disc' | 'pucci_command_disc' | 'cmoon_debris' | 'mih_knife' | 'pucci_acid_pool' | 'gappy_plunder_bubble' | 'gappy_shave_bubble' | 'gappy_barrage_bubble' | 'gappy_trap_bubble' | 'gappy_go_beyond' | 'love_train_beam' | 'valentine_flag_whip' | 'dipez_photon_bullet' | 'dipez_laser_beam' | 'dipez_star_maker_beam' | 'dipez_map_laser_beam';
+  type: 'knife' | 'space_ripper' | 'space_ripper_beam' | 'road_roller' | 'sendo_wave' | 'clacker_volley' | 'tommy_bullet' | 'hermit_vine_grab' | 'blood_blind' | 'rapier_blade' | 'josuke_shard' | 'josuke_bearing' | 'rock_insect' | 'calamity_debris' | 'calamity_car' | 'calamity_raindrop' | 'calamity_meteor' | 'calamity_lightning' | 'pucci_bullet' | 'pucci_disc' | 'pucci_command_disc' | 'cmoon_debris' | 'mih_knife' | 'pucci_acid_pool' | 'gappy_plunder_bubble' | 'gappy_shave_bubble' | 'gappy_barrage_bubble' | 'gappy_trap_bubble' | 'gappy_go_beyond' | 'love_train_beam' | 'valentine_flag_whip' | 'dipez_photon_bullet' | 'dipez_laser_beam' | 'dipez_star_maker_beam' | 'dipez_map_laser_beam' | 'sun_heat_laser' | 'sun_flare_bomb' | 'sun_mirage_decoy' | 'perstein_chain_hook' | 'perstein_spark_wave';
   x: number;
   y: number;
   vx: number;
@@ -270,8 +291,9 @@ export interface Particle {
   maxLife: number;
   size: number;
   color: string;
-  type: 'spark' | 'fist' | 'barrage_arm' | 'menacing' | 'aura' | 'text' | 'shockwave' | 'knife' | 'laser' | 'steam' | 'disc' | 'feather' | 'clock_gear' | 'gravity_wave' | 'flag_sheet' | 'paradox_cube' | 'love_train_pillar' | 'dimensional_rift' | 'dipez_photon_spark' | 'dipez_star_maker_flash';
+  type: 'spark' | 'fist' | 'barrage_arm' | 'menacing' | 'aura' | 'text' | 'shockwave' | 'knife' | 'laser' | 'steam' | 'disc' | 'feather' | 'clock_gear' | 'gravity_wave' | 'gravity_arrow' | 'acid_bubble' | 'spiral_word' | 'inversion_spiral' | 'flag_sheet' | 'paradox_cube' | 'love_train_pillar' | 'dimensional_rift' | 'dipez_photon_spark' | 'dipez_star_maker_flash' | 'perstein_chain_gear' | 'perstein_metal_shard' | 'perstein_silence_ring';
   text?: string;
+  gravityAxis?: 'down' | 'right' | 'up' | 'left';
   
   // Rich Barrage Arm & Line Properties
   originX?: number;
@@ -452,6 +474,8 @@ export interface Fighter {
   mihBlitzHitsRemaining?: number;
   mihBlitzTargetId?: string;
   discFrozenTimer?: number; // Freeze command
+  acidMeltTimer?: number; // Whitesnake acid dissolve & dream illusion timer
+  inversionDistortTimer?: number; // C-Moon inside-out surface inversion visual timer
   universeResetTimer?: number;
   universeResetFlash?: number;
   acidPools?: Array<{ id: number; x: number; y: number; width: number; height: number; life: number; maxLife: number }>;
@@ -495,6 +519,63 @@ export interface Fighter {
   dipezStarMakerActive?: boolean;
   dipezStarMakerTimer?: number;
   dipezStarMakerFlash?: number; // 3 seconds (180 frames) super white arena flash
+
+  // Arabian Fat & The Sun Mechanics (Part 3: Stardust Crusaders)
+  isHidingBehindMirror?: boolean;
+  mirrorObject?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    hp: number;
+    maxHp: number;
+    isDestroyed: boolean;
+    glintTimer: number;
+    hitFlashTimer: number;
+  };
+  sunActive?: boolean;
+  sunTemperature?: number; // 0 to 100
+  sunLaserTimer?: number;
+  sunX?: number;
+  sunY?: number;
+  sunExposedTimer?: number; // Panic timer when exposed without defense
+
+  // Michael Junister Mechanics (Ghost: Hat Price, Golden Limb Aura & Kinetic Combat)
+  michaelOverdriveTimer?: number;
+  michaelCounterActive?: boolean;
+  michaelCounterTimer?: number;
+  michaelAxeKickPhase?: 'rise' | 'fall' | 'slam';
+  michaelKineticMeter?: number; // 0 to 100%
+  michaelKineticStacks?: number; // 0 to 5 stacks
+  michaelUltimateHitsRemaining?: number;
+  isGeorgeMounted?: boolean;
+  georgeSummonTimer?: number;
+  georgeMountingTimer?: number;
+  georgeMountingPhase?: 'approach' | 'vault' | 'mount';
+  georgePendingRemount?: boolean;
+  georgeFallOffTimer?: number;
+  georgeState?: 'mounted' | 'mounting' | 'rearing' | 'idle';
+  georgeX?: number;
+  georgeY?: number;
+  georgeTrampleCooldown?: number;
+
+  // Wally Wable / Perstein Mechanics (Ghost: Wable the Metal Cutter, 70m Drive Chain, Shred & Absolute Causality Deflection)
+  persteinDeflectionActive?: boolean; // Awaken 2: Absolute Chain Deflection aura
+  persteinDeflectionTimer?: number;
+  persteinDeflectReactionTimer?: number; // Reactive timer when invisible drive chains surge to deflect attack/object
+  persteinDeflectImpactX?: number;
+  persteinDeflectImpactY?: number;
+  persteinDeflectAngle?: number;
+  persteinUltVictimId?: string | null; // Bound victim for ultimate
+  persteinUltPhase?: 'snare' | 'pull' | 'spin_shred' | 'constrict_crush' | 'complete';
+  persteinShredTargetId?: string | null; // Awaken 1: Direct Touch Flesh Shred
+  persteinShredTimer?: number;
+  persteinShredHitsRemaining?: number;
+  persteinChainBindTimer?: number; // Target bound by drive chains
+  persteinChainSparkTimer?: number;
+  persteinChainLength?: number; // 0 to 70m
+  persteinRPM?: number; // Current drive chain rotational speed (0 to 100)
+  persteinSilenceTimer?: number; // Screen silence vignette effect after ultimate
 
   // Customization
   color: string;
